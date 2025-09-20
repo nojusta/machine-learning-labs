@@ -1,6 +1,7 @@
 import pandas as pd
+import numpy as np
 
-df = pd.read_csv('../data/clean_data.csv')
+df = pd.read_csv('./data/clean_data.csv')
 
 selected_columns = ['Units_Sold', 'Sales', 'Discounts', 'Sale_Price', 'Gross_Sales']
 df_selected = df[selected_columns].copy()
@@ -53,6 +54,8 @@ df_no_outliers = df_selected.copy()
 for col, vals in outliers.items():
     df_no_outliers = df_no_outliers[~df_no_outliers[col].isin(vals)]
 
+df_no_outliers.to_csv('./data/clean_data_without_outliers.csv', index=False)
+
 stats_no_outliers = df_no_outliers[numeric_cols].agg(['min', 'max', 'mean', 'median', 'var'])
 stats_no_outliers.loc['1 kvartilė'] = df_no_outliers[numeric_cols].quantile(0.25)
 stats_no_outliers.loc['3 kvartilė'] = df_no_outliers[numeric_cols].quantile(0.75)
@@ -69,3 +72,31 @@ for col in numeric_cols:
 
 print("\nAprašomosios statistikos lentelė po atsiskyrėlių pašalinimo:")
 print(stats_no_outliers)
+
+df_cleaned = pd.read_csv('./data/clean_data_without_outliers.csv')
+
+
+means = df_selected.mean()  # vidurkiai
+variances = df_selected.var(ddof=1)  # dispersijos (su m-1 dalikliu)
+stds = np.sqrt(variances)  # standartiniai nuokrypiai
+
+df_standardized = (df_selected - means) / stds
+
+print("\nSunormuoti duomenys (pagal vidurkį ir dispersiją, Vidurkis ir dispersija):")
+print(df_standardized.head())
+
+
+mins = df_selected.min()
+maxs = df_selected.max()
+
+df_minmax = (df_selected - mins) / (maxs - mins)
+
+print("\nSunormuoti duomenys (pagal Min-Max [0,1]):")
+print(df_minmax.head())
+
+df_standardized.to_csv("./data/normalized_mean_var.csv", index=False)
+df_minmax.to_csv("./data/normalized_minmax.csv", index=False)
+
+print("Sunormuota visa duomenų aibė. Rezultatai įrašyti į failus:")
+print(" - normalized_mean_var.csv (Vidurkis ir dispersija)")
+print(" - normalized_minmax.csv (Min-Max)")
