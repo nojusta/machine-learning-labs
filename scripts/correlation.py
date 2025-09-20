@@ -1,7 +1,7 @@
 import pandas as pd
 
 def main():
-    df = pd.read_csv("./data/clean_data_without_outliers.csv")
+    df = pd.read_csv("../data/clean_data_without_outliers.csv")
     
     correlation_matrix = df.corr(method='pearson')
     
