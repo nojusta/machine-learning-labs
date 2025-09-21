@@ -22,7 +22,11 @@ plt.title('Boxplot of standardized features')
 plt.xticks(rotation=45)
 plt.show()
 
-sns.pairplot(df_standardized)
+sns.pairplot(
+    df_standardized,
+    diag_kind=None,
+    plot_kws={'s': 15}
+)
 plt.suptitle("Scatter plot matrix of standardized features", y=1.02)
 plt.show()
 
