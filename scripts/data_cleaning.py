@@ -32,15 +32,6 @@ money_cols = [
 for c in money_cols:
     df[c] = df[c].apply(parse_currency)
 
-if "Date" in df.columns:
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    if df["Date"].isna().mean() > 0.9:  
-        df["Date"] = pd.to_datetime(df["Date"], errors="coerce", dayfirst=True)
-    df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
-    parsed = pd.to_datetime(df["Date"], errors="coerce")
-    df["Year"] = parsed.dt.year.where(~parsed.isna(), df.get("Year"))
-    df["Month_Number"] = parsed.dt.month.where(~parsed.isna(), df.get("Month_Number"))
-
 if {"Gross_Sales", "Sale_Price"}.issubset(df.columns):
     denom = df["Sale_Price"].replace(0, np.nan)
     units_float = df["Gross_Sales"] / denom
