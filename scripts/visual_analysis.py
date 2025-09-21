@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Įkeliame sunormuotus duomenis
-df_standardized = pd.read_csv("./data/normalized_minmax.csv")   #<-- Pakeitus failus tarp minmax ir mean_var
+df_standardized = pd.read_csv("../data/normalized_minmax.csv")   #<-- Pakeitus failus tarp minmax ir mean_var
                                                                 #gaunam lenteles po normalizavicjos ir outlier panaikinimo
 numeric_cols = df_standardized.columns
 
