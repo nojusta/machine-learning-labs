@@ -53,6 +53,11 @@ print("\nIšimtys:")
 for col, vals in outliers.items():
     print(f"{col}: {vals}")
 
+print("\nIšimtys:")
+for col, vals in outliers.items():
+    print(f"{col}: {len(vals)} reikšmės")
+
+
 df_no_outliers = df_selected.copy()
 for col, vals in outliers.items():
     df_no_outliers = df_no_outliers[~df_no_outliers[col].isin(vals)]
