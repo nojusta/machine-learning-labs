@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 import matplotlib.pyplot as plt
@@ -119,10 +118,8 @@ formatter = FuncFormatter(millions)
 product_summary = df.groupby('Product').agg({
     'Units_Sold': 'sum',
     'Sales': 'sum',
-    'Gross_Sales': 'sum',
     'Discounts': 'sum'
 })
-
 product_summary['Sale_Price'] = product_summary['Sales'] / product_summary['Units_Sold']
 product_summary = product_summary.sort_values(by='Units_Sold', ascending=False)
 
@@ -150,17 +147,16 @@ plt.ylabel("Units Sold")
 plt.xticks(rotation=45)
 
 plt.subplot(2, 2, 3)
-sns.barplot(x=product_summary.index, y=product_summary['Gross_Sales'], palette="coolwarm")
-plt.title("Gross Sales pagal produktus", fontsize=14)
-plt.ylabel("Gross Sales (M EUR)")
-plt.gca().yaxis.set_major_formatter(formatter)
-plt.xticks(rotation=45)
-
-plt.subplot(2, 2, 4)
 sns.barplot(x=product_summary.index, y=product_summary['Discounts'], palette="cubehelix")
 plt.title("Nuolaidos pagal produktus", fontsize=14)
 plt.ylabel("Discounts (M EUR)")
 plt.gca().yaxis.set_major_formatter(formatter)
+plt.xticks(rotation=45)
+
+plt.subplot(2, 2, 4)
+sns.barplot(x=product_summary.index, y=product_summary['Sale_Price'], palette="coolwarm")
+plt.title("Vidutinė pardavimo kaina pagal produktus", fontsize=14)
+plt.ylabel("Sale Price (EUR)")
 plt.xticks(rotation=45)
 
 plt.tight_layout()
