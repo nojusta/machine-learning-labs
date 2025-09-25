@@ -159,6 +159,5 @@ plt.title("Vidutinė pardavimo kaina pagal produktus", fontsize=14)
 plt.ylabel("Average Price ($)")
 plt.xticks(rotation=45)
 
-
 plt.tight_layout()
 plt.show()
