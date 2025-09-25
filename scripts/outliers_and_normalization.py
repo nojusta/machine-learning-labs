@@ -120,7 +120,7 @@ product_summary = df.groupby('Product').agg({
     'Sales': 'sum',
     'Discounts': 'sum'
 })
-product_summary['Sale_Price'] = product_summary['Sales'] / product_summary['Units_Sold']
+product_summary['Average_Price'] = product_summary['Sales'] / product_summary['Units_Sold']
 product_summary = product_summary.sort_values(by='Units_Sold', ascending=False)
 
 print("\nBendri pardavimai pagal produktus:\n")
@@ -154,10 +154,11 @@ plt.gca().yaxis.set_major_formatter(formatter)
 plt.xticks(rotation=45)
 
 plt.subplot(2, 2, 4)
-sns.barplot(x=product_summary.index, y=product_summary['Sale_Price'], palette="coolwarm")
+sns.barplot(x=product_summary.index, y=product_summary['Average_Price'], palette="coolwarm")
 plt.title("Vidutinė pardavimo kaina pagal produktus", fontsize=14)
-plt.ylabel("Sale Price (EUR)")
+plt.ylabel("Average Price (EUR)")
 plt.xticks(rotation=45)
+
 
 plt.tight_layout()
 plt.show()
