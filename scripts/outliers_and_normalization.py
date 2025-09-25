@@ -1,5 +1,9 @@
 import pandas as pd
 import numpy as np
+import seaborn as sns
+from matplotlib.ticker import FuncFormatter
+import matplotlib.pyplot as plt
+
 
 df = pd.read_csv('../data/clean_data.csv')
 
@@ -105,3 +109,59 @@ print("\nSunormuota visa duomenų aibė. Rezultatai įrašyti į failus:")
 print(" - normalized_mean_var.csv (Vidurkis ir dispersija)")
 print(" - normalized_minmax.csv (Min-Max)")
 print(" - clean_data_without_outliers.csv (be ekstremalių atsiskyrėlių)")
+
+
+def millions(x, pos):
+    return f'{x/1e6:.1f}M'
+
+formatter = FuncFormatter(millions)
+
+product_summary = df.groupby('Product').agg({
+    'Units_Sold': 'sum',
+    'Sales': 'sum',
+    'Gross_Sales': 'sum',
+    'Discounts': 'sum'
+})
+
+product_summary['Sale_Price'] = product_summary['Sales'] / product_summary['Units_Sold']
+product_summary = product_summary.sort_values(by='Units_Sold', ascending=False)
+
+print("\nBendri pardavimai pagal produktus:\n")
+print(product_summary)
+
+totals = product_summary.sum(numeric_only=True)
+print("\nBendros sumos visiems produktams:")
+print(totals)
+
+plt.figure(figsize=(16, 12))
+sns.set(style="whitegrid")
+
+plt.subplot(2, 2, 1)
+sns.barplot(x=product_summary.index, y=product_summary['Sales'], palette="magma")
+plt.title("Pajamos pagal produktus", fontsize=14)
+plt.ylabel("Sales (M EUR)")
+plt.gca().yaxis.set_major_formatter(formatter)
+plt.xticks(rotation=45)
+
+plt.subplot(2, 2, 2)
+sns.barplot(x=product_summary.index, y=product_summary['Units_Sold'], palette="viridis")
+plt.title("Parduotų vienetų kiekis", fontsize=14)
+plt.ylabel("Units Sold")
+plt.xticks(rotation=45)
+
+plt.subplot(2, 2, 3)
+sns.barplot(x=product_summary.index, y=product_summary['Gross_Sales'], palette="coolwarm")
+plt.title("Gross Sales pagal produktus", fontsize=14)
+plt.ylabel("Gross Sales (M EUR)")
+plt.gca().yaxis.set_major_formatter(formatter)
+plt.xticks(rotation=45)
+
+plt.subplot(2, 2, 4)
+sns.barplot(x=product_summary.index, y=product_summary['Discounts'], palette="cubehelix")
+plt.title("Nuolaidos pagal produktus", fontsize=14)
+plt.ylabel("Discounts (M EUR)")
+plt.gca().yaxis.set_major_formatter(formatter)
+plt.xticks(rotation=45)
+
+plt.tight_layout()
+plt.show()
