@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-SRC_PATH = './data/clean_data.csv'
-NORM_MINMAX_PATH = './data/normalized_minmax.csv'
+SRC_PATH = '../data/clean_data.csv'
+NORM_MINMAX_PATH = '../data/normalized_minmax.csv'
 
 CANDIDATE_NUM_COLS = ['Age', 'FCVC', 'NCP', 'CAEC', 'CH2O', 'FAF', 'TUE', 'CALC', 'MTRANS']
 
