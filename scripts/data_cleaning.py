@@ -1,7 +1,7 @@
 import pandas as pd
 
-IN_PATH = "./data/data.csv"
-OUT_PATH = "./data/clean_data.csv"
+IN_PATH = "../data/data.csv"
+OUT_PATH = "../data/clean_data.csv"
 ANOMALY_REPORT_PATH = "./data/anomalies_report.csv" # nelogisku duomenu ataskaita
 WINSORIZE = True 
 
@@ -205,3 +205,5 @@ if anomaly_records:
     print(f"Details saved to {ANOMALY_REPORT_PATH}")
 else:
     print("No anomalies found outside specified ranges.")
+print(df.head())
+print(df.dtypes)
