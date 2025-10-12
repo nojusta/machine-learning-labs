@@ -6,7 +6,7 @@ CLEAN_NO_OUTLIERS_PATH = './data/clean_data_without_outliers.csv'
 NORM_MINMAX_PATH = './data/normalized_minmax.csv'
 
 # Numeric columns to process (present in your cleaned dataset)
-CANDIDATE_NUM_COLS = ['Age', 'Height', 'Weight', 'FCVC', 'NCP', 'CH2O', 'FAF', 'TUE', 'BMI']
+CANDIDATE_NUM_COLS = ['Age', 'FCVC', 'NCP', 'CH2O', 'FAF', 'TUE']
 
 def find_outlier_indices(df: pd.DataFrame, cols):
     idx = set()

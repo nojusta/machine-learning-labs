@@ -1,7 +1,7 @@
 import pandas as pd
 
-IN_PATH = "../data/data.csv"
-OUT_PATH = "../data/clean_data.csv"
+IN_PATH = "./data/data.csv"
+OUT_PATH = "./data/clean_data.csv"
 ANOMALY_REPORT_PATH = "./data/anomalies_report.csv" # nelogisku duomenu ataskaita
 WINSORIZE = True 
 
@@ -19,7 +19,7 @@ df = pd.read_csv(IN_PATH, encoding="utf-8")
 binary_cols = [
     "family_history_with_overweight", "FAVC", "SMOKE", "SCC"
 ]
-numeric_cols = ["Age", "Height", "Weight", "FCVC", "NCP", "CH2O", "FAF", "TUE"]
+numeric_cols = ["Age", "FCVC", "NCP", "CH2O", "FAF", "TUE"]
 freq_ordinal_cols = ["CAEC", "CALC"] 
 mtrans_col = "MTRANS"
 gender_col = "Gender"
@@ -109,29 +109,18 @@ for col, (lo, hi) in ordinal_ranges.items():
     if col in df.columns:
         clip_and_record(df, col, lo, hi)
 
-# BMI skaiciavimas
-if {"Weight", "Height"}.issubset(df.columns):
-    h = pd.to_numeric(df["Height"], errors="coerce")
-    w = pd.to_numeric(df["Weight"], errors="coerce")
-    df["BMI"] = (w / (h ** 2)).round(2)
+df = df.drop(columns=["Height", "Weight", "BMI"], errors="ignore")
 
 # Age as integer (Int64)
 if "Age" in df.columns:
     df["Age"] = pd.to_numeric(df["Age"], errors="coerce").round().astype("Int64")
 
-# Keep as floats (decimals)
-for c in ["Height", "Weight", "BMI"]:
-    if c in df.columns:
-        df[c] = pd.to_numeric(df[c], errors="coerce").astype("float64")
 
-# Round to 2 decimals for output (for Height, Weight)
-for c in ["Height", "Weight"]:
+# Ensure numeric types for remaining numeric_cols
+for c in numeric_cols:
     if c in df.columns:
-        df[c] = df[c].round(2)
+        df[c] = pd.to_numeric(df[c], errors="coerce").astype("float64" if c in ["FCVC","NCP","CH2O","FAF","TUE"] else "Int64")
 
-# Round all float64 to 2 decimals
-float_cols = df.select_dtypes(include="float").columns
-df[float_cols] = df[float_cols].round(2)
 
 if target_col in df.columns:
     df[target_col] = (
