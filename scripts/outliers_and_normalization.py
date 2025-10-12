@@ -14,10 +14,15 @@ def find_outlier_indices(df: pd.DataFrame, cols):
         s = pd.to_numeric(df[col], errors='coerce')
         q1, q3 = s.quantile(0.25), s.quantile(0.75)
         iqr = q3 - q1
-        lower = q1 - 3 * iqr
-        upper = q3 + 3 * iqr
-        bad = df[(s < lower) | (s > upper)].index
-        idx.update(bad)
+
+        inner_low = q1 - 1.5 * iqr
+        inner_high = q3 + 1.5 * iqr
+        outer_low = q1 - 3 * iqr
+        outer_high = q3 + 3 * iqr
+
+        extreme = df[(s < outer_low) | (s > outer_high)].index
+
+        idx.update(extreme)
     return sorted(idx)
 
 def minmax_normalize(df: pd.DataFrame, cols):
