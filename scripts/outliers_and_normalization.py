@@ -1,163 +1,94 @@
 import pandas as pd
-import seaborn as sns
-from matplotlib.ticker import FuncFormatter
-import matplotlib.pyplot as plt
+import numpy as np
 
+SRC_PATH = './data/clean_data.csv'
+CLEAN_NO_OUTLIERS_PATH = './data/clean_data_without_outliers.csv'
+NORM_MINMAX_PATH = './data/normalized_minmax.csv'
 
-df = pd.read_csv('../data/clean_data.csv')
+# Numeric columns to process (present in your cleaned dataset)
+CANDIDATE_NUM_COLS = ['Age', 'Height', 'Weight', 'FCVC', 'NCP', 'CH2O', 'FAF', 'TUE', 'BMI']
 
-selected_columns = ['Units_Sold', 'Sales', 'Discounts', 'Sale_Price', 'Gross_Sales']
-df_selected = df[selected_columns].copy()
-numeric_cols = selected_columns
+def find_outlier_indices(df: pd.DataFrame, cols):
+    idx = set()
+    for col in cols:
+        s = pd.to_numeric(df[col], errors='coerce')
+        q1, q3 = s.quantile(0.25), s.quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - 3 * iqr
+        upper = q3 + 3 * iqr
+        bad = df[(s < lower) | (s > upper)].index
+        idx.update(bad)
+    return sorted(idx)
 
-stats = df_selected[numeric_cols].agg(['min', 'max', 'mean', 'median', 'var'])
-stats.loc['1 kvartilė'] = df_selected[numeric_cols].quantile(0.25)
-stats.loc['3 kvartilė'] = df_selected[numeric_cols].quantile(0.75)
-stats = stats.rename(index={
-    'min': 'Min',
-    'max': 'Max',
-    'mean': 'Vidurkis',
-    'median': 'Mediana',
-    'var': 'Dispersija'
-})
+def minmax_normalize(df: pd.DataFrame, cols):
+    mins = df[cols].min()
+    maxs = df[cols].max()
+    scale = (maxs - mins).replace(0, np.nan)  # avoid div by zero
+    out = (df[cols].astype(float) - mins) / scale
+    return out.fillna(0.0)
 
-def format_number(x):
+# --- Added: descriptive stats helpers ---
+def _fmt_number(x):
     if pd.isna(x):
         return "NaN"
-    elif x == int(x):
-        return f"{int(x):,}"
-    else:
-        return f"{x:,.2f}"
+    fx = float(x)
+    return f"{int(fx)}" if fx.is_integer() else f"{fx:.2f}"
 
-for col in numeric_cols:
-    stats[col] = stats[col].apply(format_number)
+def describe(df: pd.DataFrame, cols):
+    stats = df[cols].agg(['min', 'max', 'mean', 'median', 'var'])
+    stats.loc['1 kvartilė'] = df[cols].quantile(0.25)
+    stats.loc['3 kvartilė'] = df[cols].quantile(0.75)
+    stats = stats.rename(index={
+        'min': 'Min',
+        'max': 'Max',
+        'mean': 'Vidurkis',
+        'median': 'Mediana',
+        'var': 'Dispersija'
+    })
+    for c in cols:
+        stats[c] = stats[c].apply(_fmt_number)
+    return stats
+# --- end added ---
 
-print("\nAprašomosios statistikos lentelė prieš atmetant išskirtis:")
-print(stats)
+def main():
+    df = pd.read_csv(SRC_PATH)
 
-def find_outliers(df, columns):
-    outliers = {}
-    for col in columns:
-        Q1 = df[col].quantile(0.25)
-        Q3 = df[col].quantile(0.75)
-        IQR = Q3 - Q1
+    # Keep only columns that exist
+    num_cols = [c for c in CANDIDATE_NUM_COLS if c in df.columns]
 
-        lower_outer = Q1 - 3 * IQR
-        upper_outer = Q3 + 3 * IQR
+    # Ensure numeric dtype for processing (in case CSV stored as strings)
+    for c in num_cols:
+        df[c] = pd.to_numeric(df[c], errors='coerce')
 
-        extreme = df[(df[col] < lower_outer) | (df[col] > upper_outer)][col]
+    print("Eilučių skaičius prieš filtravimą:", len(df))
 
-        outliers[col] = extreme.tolist()
-    return outliers
+    # --- Added: stats before outlier removal ---
+    print("\nAprašomosios statistikos lentelė (prieš išimčių šalinimą):")
+    print(describe(df, num_cols))
 
-outliers = find_outliers(df_selected, numeric_cols)
+    # Outlier removal: drop full rows if any selected numeric col is extreme
+    outlier_idx = find_outlier_indices(df, num_cols)
+    print("\nIšimčių eilutės (indeksų skaičius):", len(outlier_idx))
 
-print("\nIšimtys:")
-for col, vals in outliers.items():
-    print(f"{col}: {vals}")
+    df_no_outliers = df.drop(index=outlier_idx).reset_index(drop=True)
+    df_no_outliers.to_csv(CLEAN_NO_OUTLIERS_PATH, index=False)
+    print("Išsaugota be išimčių:", CLEAN_NO_OUTLIERS_PATH)
+    print("Eilučių skaičius po filtravimo:", len(df_no_outliers))
 
-print("\nIšimtys:")
-for col, vals in outliers.items():
-    print(f"{col}: {len(vals)} reikšmės")
+    # --- Added: stats after outlier removal ---
+    print("\nAprašomosios statistikos lentelė (po išimčių šalinimo):")
+    print(describe(df_no_outliers, num_cols))
 
+    # Min-Max normalization ONLY on selected numeric columns
+    df_norm = df_no_outliers.copy()
+    df_norm[num_cols] = minmax_normalize(df_no_outliers, num_cols).round(4)
 
-df_no_outliers = df_selected.copy()
-for col, vals in outliers.items():
-    df_no_outliers = df_no_outliers[~df_no_outliers[col].isin(vals)]
+    df_norm.to_csv(NORM_MINMAX_PATH, index=False)
+    print("\nMin-Max normalizuota aibė išsaugota į:", NORM_MINMAX_PATH)
 
-df_no_outliers.to_csv('../data/clean_data_without_outliers.csv', index=False)
+    # Preview
+    print("\nPirmos 5 eilutės (tik normalizuoti stulpeliai):")
+    print(df_norm[num_cols].head())
 
-stats_no_outliers = df_no_outliers[numeric_cols].agg(['min', 'max', 'mean', 'median', 'var'])
-stats_no_outliers.loc['1 kvartilė'] = df_no_outliers[numeric_cols].quantile(0.25)
-stats_no_outliers.loc['3 kvartilė'] = df_no_outliers[numeric_cols].quantile(0.75)
-stats_no_outliers = stats_no_outliers.rename(index={
-    'min': 'Min',
-    'max': 'Max',
-    'mean': 'Vidurkis',
-    'median': 'Mediana',
-    'var': 'Dispersija'
-})
-
-for col in numeric_cols:
-    stats_no_outliers[col] = stats_no_outliers[col].apply(format_number)
-
-print("\nAprašomosios statistikos lentelė po išimčių pašalinimo:")
-print(stats_no_outliers)
-
-
-means = df_no_outliers.mean()
-stds = df_no_outliers.std(ddof=1)
-df_standardized = (df_no_outliers - means) / stds
-
-print("\nSunormuoti duomenys (pagal vidurkį ir dispersiją):")
-print(df_standardized.head())
-
-
-mins = df_no_outliers.min()
-maxs = df_no_outliers.max()
-df_minmax = (df_no_outliers - mins) / (maxs - mins)
-
-print("\nSunormuoti duomenys (Min-Max [0,1]):")
-print(df_minmax.head())
-
-
-df_standardized.to_csv("../data/normalized_mean_var.csv", index=False)
-df_minmax.to_csv("../data/normalized_minmax.csv", index=False)
-
-print("\nSunormuota visa duomenų aibė. Rezultatai įrašyti į failus:")
-print(" - normalized_mean_var.csv (Vidurkis ir dispersija)")
-print(" - normalized_minmax.csv (Min-Max)")
-print(" - clean_data_without_outliers.csv (be ekstremalių atsiskyrėlių)")
-
-
-def millions(x, pos):
-    return f'{x/1e6:.1f}M'
-
-formatter = FuncFormatter(millions)
-
-product_summary = df.groupby('Product').agg({
-    'Units_Sold': 'sum',
-    'Sales': 'sum',
-    'Discounts': 'sum'
-})
-product_summary['Average_Price'] = product_summary['Sales'] / product_summary['Units_Sold']
-product_summary = product_summary.sort_values(by='Units_Sold', ascending=False)
-
-print("\nBendri pardavimai pagal produktus:\n")
-print(product_summary)
-
-totals = product_summary.sum(numeric_only=True)
-print("\nBendros sumos visiems produktams:")
-print(totals)
-
-plt.figure(figsize=(16, 12))
-sns.set(style="whitegrid")
-
-plt.subplot(2, 2, 1)
-sns.barplot(x=product_summary.index, y=product_summary['Sales'], palette="magma")
-plt.title("Pajamos pagal produktus", fontsize=14)
-plt.ylabel("Sales (M $)")
-plt.gca().yaxis.set_major_formatter(formatter)
-plt.xticks(rotation=45)
-
-plt.subplot(2, 2, 2)
-sns.barplot(x=product_summary.index, y=product_summary['Units_Sold'], palette="viridis")
-plt.title("Parduotų vienetų kiekis", fontsize=14)
-plt.ylabel("Units Sold")
-plt.xticks(rotation=45)
-
-plt.subplot(2, 2, 3)
-sns.barplot(x=product_summary.index, y=product_summary['Discounts'], palette="cubehelix")
-plt.title("Nuolaidos pagal produktus", fontsize=14)
-plt.ylabel("Discounts (M $)")
-plt.gca().yaxis.set_major_formatter(formatter)
-plt.xticks(rotation=45)
-
-plt.subplot(2, 2, 4)
-sns.barplot(x=product_summary.index, y=product_summary['Average_Price'], palette="coolwarm")
-plt.title("Vidutinė pardavimo kaina pagal produktus", fontsize=14)
-plt.ylabel("Average Price ($)")
-plt.xticks(rotation=45)
-
-plt.tight_layout()
-plt.show()
+if __name__ == '__main__':
+    main()

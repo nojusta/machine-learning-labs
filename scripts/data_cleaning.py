@@ -1,7 +1,7 @@
 import pandas as pd
 
-IN_PATH = "./data/data.csv"
-OUT_PATH = "./data/clean_data.csv"
+IN_PATH = "../data/data.csv"
+OUT_PATH = "../data/clean_data.csv"
 ANOMALY_REPORT_PATH = "./data/anomalies_report.csv" # nelogisku duomenu ataskaita
 WINSORIZE = True 
 
@@ -158,6 +158,49 @@ df_out.to_csv(OUT_PATH, index=False, na_rep="")
 print(f"Clean data saved to {OUT_PATH}")
 if anomaly_records:
     by_col = pd.DataFrame(anomaly_records).groupby("column").size().to_dict()
+    print("Anomalies found (per column):", by_col)
+    print(f"Details saved to {ANOMALY_REPORT_PATH}")
+else:
+    print("No anomalies found outside specified ranges.")
+
+# Aprašomoji statistika
+numeric_for_stats = df.select_dtypes(include="number").columns.tolist()
+if target_col in numeric_for_stats:
+    numeric_for_stats.remove(target_col)
+
+stats = df[numeric_for_stats].agg(['min', 'max', 'mean', 'median', 'var'])
+stats.loc['1 kvartilė'] = df[numeric_for_stats].quantile(0.25)
+stats.loc['3 kvartilė'] = df[numeric_for_stats].quantile(0.75)
+stats = stats.rename(index={
+    'min': 'Min',
+    'max': 'Max',
+    'mean': 'Vidurkis',
+    'median': 'Mediana',
+    'var': 'Dispersija'
+})
+
+def _fmt_stat(x):
+    if pd.isna(x):
+        return "NaN"
+    # show integers without .00, others with 2 decimals
+    try:
+        fx = float(x)
+        return f"{int(fx)}" if fx.is_integer() else f"{fx:.2f}"
+    except Exception:
+        return str(x)
+
+for col in stats.columns:
+    stats[col] = stats[col].apply(_fmt_stat)
+
+print("\nAprašomosios statistikos lentelė:")
+print(stats)
+
+print("\nPirmos eilutės:")
+print(df.head())
+print("\nTipai:")
+print(df.dtypes)
+
+if anomaly_records:
     print("Anomalies found (per column):", by_col)
     print(f"Details saved to {ANOMALY_REPORT_PATH}")
 else:
