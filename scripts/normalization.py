@@ -4,7 +4,7 @@ import numpy as np
 SRC_PATH = './data/clean_data.csv'
 NORM_MINMAX_PATH = './data/normalized_minmax.csv'
 
-CANDIDATE_NUM_COLS = ['Gender', 'Age', 'family_history_with_overweight', 'FAVC' , 'FCVC', 'NCP', 'CAEC', 'CH2O', 'SCC', 'FAF', 'TUE', 'CALC', 'MTRANS', 'NObeyesdad']
+CANDIDATE_NUM_COLS = ['Age', 'FCVC', 'NCP', 'CAEC', 'CH2O', 'FAF', 'TUE', 'CALC', 'MTRANS']
 
 def minmax_normalize(df: pd.DataFrame, cols):
     mins = df[cols].min()
