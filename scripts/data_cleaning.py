@@ -162,7 +162,7 @@ df_full_out.to_csv(FULL_OUT_PATH, index=False, na_rep="")
 print(f"Full clean data with Height/Weight saved to {FULL_OUT_PATH}")
 
 # ---------- 5) Dabar padarom versiją be Height/Weight/BMI (clean_data.csv) ----------
-df_no_hw = df.drop(columns=["Height", "Weight", "BMI"], errors="ignore").copy()
+df_no_hw = df.drop(columns=["Height", "Weight", "Gender"], errors="ignore").copy()
 
 # dar kartą užtikrinam tipų tvarką (po drop'o neturėtų kisti, bet tebūnie)
 if "Age" in df_no_hw.columns:
