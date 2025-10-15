@@ -8,7 +8,6 @@ IN_PATH = "../../data/clean_data.csv"
 LABEL = "NObeyesdad"
 DROP = ["Height", "Weight", "Gender"]
 
-# Klasės mapping
 label_names = {
     0: "Insufficient Weight",
     1: "Normal Weight",
@@ -19,22 +18,18 @@ label_names = {
     6: "Obesity Type III",
 }
 
-# ---- 1) Įkėlimas ir pasiruošimas
 df = pd.read_csv(IN_PATH)
 
-# numetam, jei dar likę
 for c in DROP:
     if c in df.columns:
         df = df.drop(columns=c)
 
-# atskiriam X ir y, išmetam eiles su NaN
 X = df.drop(columns=[LABEL]).copy()
 y = df[LABEL].copy()
 mask = X.notna().all(axis=1) & y.notna()
 X = X.loc[mask].values
 y = y.loc[mask].values.astype(int)
 
-# ---- 2) t-SNE (nenormuota)
 tsne = TSNE(
     n_components=2,
     perplexity=80,
@@ -46,7 +41,6 @@ tsne = TSNE(
 )
 Z = tsne.fit_transform(X)
 
-# ---- 3) Braižymas su pavadinimais
 plt.figure(figsize=(7,6))
 classes = np.unique(y)
 colors = plt.cm.tab10(np.linspace(0, 1, max(7, len(classes))))
