@@ -6,7 +6,6 @@ from sklearn.manifold import TSNE
 
 IN_PATH = "../../data/clean_data.csv"
 LABEL = "NObeyesdad"
-DROP = ["Height", "Weight", "Gender"]
 
 label_names = {
     0: "Insufficient Weight",
