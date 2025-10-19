@@ -136,7 +136,7 @@ X_norm, y_norm, out_norm = load_xy(NORM_PATH)
 #               title_text=f"t-SNE (normuota; n_iter={iters})",
 #               fname_tag=f"tsne_norm_perp50_it{iters}")
 
-for perp in (10, 20, 30, 40, 50, 60, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190):
+for perp in (35, 40):
     plot_tsne(
         X_norm, y_norm, out_norm,
         perplexity=perp, lr=200, max_iter=600,
