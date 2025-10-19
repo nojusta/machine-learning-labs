@@ -121,20 +121,20 @@ def plot_tsne(X, y, outlier_type, perplexity, lr, max_iter, title_text, fname_ta
     return Z
 
 # 1) Nenormuota – keli grafikai su skirtingu perplexity
-# X_raw, y_raw, out_raw = load_xy(NON_NORM_PATH)
-# plot_tsne(X_raw, y_raw, out_raw, perplexity=30, lr=200, max_iter=500,
-#           title_text="t-SNE (nenormuota)", fname_tag="tsne_raw_perp30_it1000")
-# plot_tsne(X_raw, y_raw, out_raw, perplexity=50, lr=200, max_iter=500,
-#           title_text="t-SNE (nenormuota)", fname_tag="tsne_raw_perp50_it1000")
-# plot_tsne(X_raw, y_raw, out_raw, perplexity=80, lr=200, max_iter=500,
-#           title_text="t-SNE (nenormuota)", fname_tag="tsne_raw_perp80_it1500")
+X_raw, y_raw, out_raw = load_xy(NON_NORM_PATH)
+plot_tsne(X_raw, y_raw, out_raw, perplexity=30, lr=200, max_iter=500,
+          title_text="t-SNE (nenormuota)", fname_tag="tsne_raw_perp30_it1000")
+plot_tsne(X_raw, y_raw, out_raw, perplexity=50, lr=200, max_iter=500,
+          title_text="t-SNE (nenormuota)", fname_tag="tsne_raw_perp50_it1000")
+plot_tsne(X_raw, y_raw, out_raw, perplexity=80, lr=200, max_iter=500,
+          title_text="t-SNE (nenormuota)", fname_tag="tsne_raw_perp80_it1500")
 
-# 2) Normuota – loop per n_iter, fiksuotas perplexity=50
+# 2) Normuota – loop per n_iter ir perplexity tolimensniam loop'e
 X_norm, y_norm, out_norm = load_xy(NORM_PATH)
-# for iters in (250, 300, 350, 500, 600, 750, 1000):
-#     plot_tsne(X_norm, y_norm, out_norm, perplexity=50, lr=200, max_iter=iters,
-#               title_text=f"t-SNE (normuota; n_iter={iters})",
-#               fname_tag=f"tsne_norm_perp50_it{iters}")
+for iters in (250, 300, 350, 500, 600, 750, 1000):
+    plot_tsne(X_norm, y_norm, out_norm, perplexity=50, lr=200, max_iter=iters,
+              title_text=f"t-SNE (normuota; n_iter={iters})",
+              fname_tag=f"tsne_norm_perp50_it{iters}")
 
 for perp in (35, 40):
     plot_tsne(
