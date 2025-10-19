@@ -172,9 +172,9 @@ def plot_umap(df, pozymiai, n_neighbors, min_dist, sklaida, metric, ax, naudoti_
     
     # Fiksuotos spalvos klasėms
     class_colors = {
-        '4': "#ff7f0e",  # oranžinė 
-        '5': "#aec7e8",  # šviesiai mėlyna
-        '6': "#2ca02c",  # žalia
+        '4': "#ff7f0e",
+        '5': "#aec7e8",
+        '6': "#2ca02c",
         4: "#ff7f0e",
         5: "#aec7e8",
         6: "#2ca02c"
