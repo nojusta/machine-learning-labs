@@ -1,13 +1,10 @@
 import pandas as pd
 import numpy as np
 
-# Nuskaitymas
-df = pd.read_csv('../data/normalized_minmax.csv')
+df = pd.read_csv('../data/clean_data.csv')
 
-# Stulpeliai, pagal kuriuos tikrinamos išskirtys
 features = ["Gender", "FCVC", "SMOKE", "CALC", "NCP", "CH2O"]
 
-# Inicializuojam žymes
 inner_mask = np.zeros(len(df), dtype=bool)
 outer_mask = np.zeros(len(df), dtype=bool)
 
@@ -39,12 +36,11 @@ inner_count = sum(df["outlier_type"] == 1)
 outer_count = sum(df["outlier_type"] == 2)
 total_count = sum(df["outlier_type"] != 0)
 
-# Spausdinam statistiką
+# Spausdinam ir issaugojam
 print("----- Išskirčių statistika -----")
 print(f"Vidinių (inner) išskirčių: {inner_count}")
 print(f"Išorinių (outer) išskirčių: {outer_count}")
 print(f"Iš viso išskirčių: {total_count}")
 
-# Išsaugom į naują CSV
-df.to_csv("../data/outliers.csv", index=False)
-print("\nRezultatai išsaugoti faile: normalized_selected_features_with_outlier_types.csv")
+df.to_csv("../data/non-norm_outliers.csv", index=False)
+print("\nRezultatai išsaugoti faile: outliers.csv")
