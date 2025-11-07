@@ -8,7 +8,7 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 
-def load_and_prepare_data(use_all_features=False):
+def load_and_prepare_data(use_all_features=True):
     """
     Duomenų nuskaitymas ir paruošimas
     """

@@ -1,12 +1,12 @@
 {
   "data_info": {
     "n_samples": 2111,
-    "n_features": 6
+    "n_features": 16
   },
   "methods": {
     "empirical": 32,
-    "elbow": 2,
-    "silhouette": 15
+    "elbow": 3,
+    "silhouette": 2
   },
   "recommendation": {
     "optimal_k": 32,

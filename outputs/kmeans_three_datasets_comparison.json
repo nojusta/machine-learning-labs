@@ -1,0 +1,34 @@
+{
+  "recommended_k": 32,
+  "datasets": {
+    "Pilna duomenų aibė": {
+      "shape": [
+        2111,
+        16
+      ],
+      "features": [
+        "Gender",
+        "Age",
+        "Height",
+        "Weight",
+        "family_history_with_overweight",
+        "FAVC",
+        "FCVC",
+        "NCP",
+        "CAEC",
+        "SMOKE",
+        "CH2O",
+        "SCC",
+        "FAF",
+        "TUE",
+        "CALC",
+        "MTRANS"
+      ],
+      "metrics": {
+        "silhouette": 0.21103441157648778,
+        "calinski_harabasz": 121.21045585643351,
+        "davies_bouldin": 1.681370016233741,
+        "sse": 12031.18541400743
+      },
+      "cluster_sizes": {
+        

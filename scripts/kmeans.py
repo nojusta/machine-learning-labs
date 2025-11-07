@@ -5,6 +5,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 import seaborn as sns
 import os
 import json
@@ -35,23 +36,16 @@ def load_optimal_k():
         print(f"KLAIDA užkraunant rezultatus: {e}")
         return None
 
-def load_and_prepare_data(use_all_features=False):
+def load_full_dataset():
     """
-    Duomenų užkrovimas - naudoja tą pačią logiką kaip opt_cluster.py
+    1. Pilna duomenų aibė (visi požymiai be NObeyesdad)
     """
-    print("\n=== DUOMENŲ PARUOŠIMAS K-MEANS ===")
-    
-    if use_all_features:
-        filename = "normalized_minmax_all.csv"
-        print("Naudojami visi požymiai")
-    else:
-        filename = "normalized_minmax.csv"
-        print("Naudojami Chi^2 atrinkti požymiai")
+    print("\n=== 1. PILNOS DUOMENŲ AIBĖS PARUOŠIMAS ===")
     
     candidates = [
-        os.path.join(os.path.dirname(__file__), "..", "data", filename),
-        os.path.join(".", "data", filename),
-        f"../data/{filename}"
+        os.path.join(os.path.dirname(__file__), "..", "data", "normalized_minmax_all.csv"),
+        os.path.join(".", "data", "normalized_minmax_all.csv"),
+        "../data/normalized_minmax_all.csv"
     ]
     
     df = None
@@ -62,65 +56,131 @@ def load_and_prepare_data(use_all_features=False):
             break
     
     if df is None:
-        raise FileNotFoundError(f"Nerastas {filename} failas")
+        raise FileNotFoundError("Nerastas normalized_minmax_all.csv failas")
     
-    # Išskiriame target kintamąjį jei egzistuoja
+    # Target kintamasis
     target = None
     if 'NObeyesdad' in df.columns:
         target = df['NObeyesdad'].values
         print(f"Rastas target kintamasis (klasių skaičius: {len(np.unique(target))})")
     
-    # Pasiimame tik skaitinius požymius (be target)
+    # Visi požymiai be target
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     if 'NObeyesdad' in numeric_cols:
         numeric_cols = numeric_cols.drop('NObeyesdad')
     
     X = df[numeric_cols].values
+    feature_names = list(numeric_cols)
     
-    print(f"Duomenų forma: {X.shape}")
-    print(f"Naudojami požymiai: {list(numeric_cols)}")
+    print(f"Pilnos aibės forma: {X.shape}")
+    print(f"Visi požymiai ({len(feature_names)}): {feature_names}")
     
-    # Standartizavimas (kaip opt_cluster.py)
+    # Standartizavimas
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
-    return X_scaled, target, list(numeric_cols), df
+    return X_scaled, target, feature_names, "Pilna duomenų aibė"
 
-def perform_kmeans(X, n_clusters, random_state=42):
+def load_chi2_dataset():
     """
-    Atlieka K-means klasterizaciją
+    2. Chi² atrinkti požymiai: Gender, FCVC, SMOKE, CALC, NCP, CH2O
     """
-    print(f"\n=== K-MEANS KLASTERIZACIJA (k={n_clusters}) ===")
+    print("\n=== 2. Chi² ATRINKTŲ POŽYMIŲ PARUOŠIMAS ===")
     
-    # K-means modelis
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "data", "normalized_minmax.csv"),
+        os.path.join(".", "data", "normalized_minmax.csv"),
+        "../data/normalized_minmax.csv"
+    ]
+    
+    df = None
+    for path in candidates:
+        if os.path.isfile(path):
+            df = pd.read_csv(path)
+            print(f"Užkrautas failas: {path}")
+            break
+    
+    if df is None:
+        raise FileNotFoundError("Nerastas normalized_minmax.csv failas")
+    
+    # Target kintamasis
+    target = None
+    if 'NObeyesdad' in df.columns:
+        target = df['NObeyesdad'].values
+    
+    # Chi² atrinkti požymiai
+    chi2_features = ['Gender', 'FCVC', 'SMOKE', 'CALC', 'NCP', 'CH2O']
+    available_features = [f for f in chi2_features if f in df.columns]
+    
+    X = df[available_features].values
+    
+    print(f"Chi² aibės forma: {X.shape}")
+    print(f"Chi² požymiai ({len(available_features)}): {available_features}")
+    
+    # Standartizavimas
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    return X_scaled, target, available_features, "Chi² atrinkti požymiai"
+
+def create_tsne_dataset():
+    """
+    3. t-SNE sumažintos dimensijos rinkinys (Chi² → 2D)
+    """
+    print("\n=== 3. t-SNE SUMAŽINTŲ DIMENSIJŲ PARUOŠIMAS ===")
+    
+    # Pirmiausia gauname Chi² duomenis
+    X_chi2, target, chi2_features, _ = load_chi2_dataset()
+    
+    print("Taikomas t-SNE dimensijų mažinimas...")
+    
+    # t-SNE parametrai
+    perplexity = min(30, X_chi2.shape[0] // 4) if X_chi2.shape[0] > 30 else 5
+    
+    tsne = TSNE(
+        n_components=2,
+        random_state=42,
+        perplexity=perplexity,
+        max_iter=1000,
+        learning_rate='auto'
+    )
+    
+    X_tsne = tsne.fit_transform(X_chi2)
+    
+    feature_names = ['t-SNE_1', 't-SNE_2']
+    
+    print(f"t-SNE aibės forma: {X_tsne.shape}")
+    print(f"t-SNE požymiai: {feature_names}")
+    print(f"Naudotas perplexity: {perplexity}")
+    
+    return X_tsne, target, feature_names, "t-SNE sumažintos dimensijos"
+
+def perform_kmeans_analysis(X, target, feature_names, dataset_name, recommended_k):
+    """
+    Atlieka pilną K-means analizę vienam duomenų rinkiniui
+    """
+    print(f"\n{'='*20} {dataset_name.upper()} {'='*20}")
+    
+    # K-means klasterizacija
     kmeans = KMeans(
-        n_clusters=n_clusters,
-        random_state=random_state,
+        n_clusters=recommended_k,
+        random_state=42,
         n_init=10,
         max_iter=300
     )
     
-    # Klasterizacija
     cluster_labels = kmeans.fit_predict(X)
     
-    print(f"Klasterizacija baigta!")
-    print(f"Klasterių centrai: {kmeans.cluster_centers_.shape}")
-    print(f"Iteracijų skaičius: {kmeans.n_iter_}")
+    print(f"K-means baigtas (k={recommended_k})")
     print(f"SSE (inertia): {kmeans.inertia_:.2f}")
+    print(f"Iteracijų skaičius: {kmeans.n_iter_}")
     
-    return kmeans, cluster_labels
-
-def evaluate_clustering(X, cluster_labels, target=None):
-    """
-    Vertina klasterizacijos kokybę
-    """
-    print(f"\n=== KLASTERIZACIJOS VERTINIMAS ===")
-    
-    # Vidiniai vertinimo kriterijai
+    # Vertinimo metrikos
     silhouette_avg = silhouette_score(X, cluster_labels)
     calinski_avg = calinski_harabasz_score(X, cluster_labels)
     davies_bouldin_avg = davies_bouldin_score(X, cluster_labels)
     
+    print(f"\nVertinimo metrikos:")
     print(f"Silhouette Score: {silhouette_avg:.4f}")
     print(f"Calinski-Harabasz Score: {calinski_avg:.2f}")
     print(f"Davies-Bouldin Score: {davies_bouldin_avg:.4f}")
@@ -133,202 +193,205 @@ def evaluate_clustering(X, cluster_labels, target=None):
         print(f"  Klasteris {label}: {count} taškai ({percentage:.1f}%)")
     
     # Išorinis vertinimas (jei yra target)
+    external_metrics = {}
     if target is not None:
         from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
         ari = adjusted_rand_score(target, cluster_labels)
         nmi = normalized_mutual_info_score(target, cluster_labels)
         
-        print(f"\nIšorinis vertinimas (su tikrais labeliais):")
+        external_metrics = {'ari': ari, 'nmi': nmi}
+        print(f"\nIšorinis vertinimas:")
         print(f"Adjusted Rand Index: {ari:.4f}")
         print(f"Normalized Mutual Information: {nmi:.4f}")
     
-    return {
+    metrics = {
         'silhouette': silhouette_avg,
         'calinski_harabasz': calinski_avg,
         'davies_bouldin': davies_bouldin_avg,
-        'cluster_counts': dict(zip(unique_labels, counts))
+        'cluster_counts': dict(zip(unique_labels, counts)),
+        'external_metrics': external_metrics
     }
+    
+    return kmeans, cluster_labels, metrics
 
-def visualize_clusters_2d(X, cluster_labels, kmeans, feature_names, target=None):
+def visualize_all_datasets(datasets_results, recommended_k):
     """
-    2D vizualizacija su PCA
+    Vizualizuoja visus tris duomenų rinkinius
     """
-    print(f"\n=== 2D VIZUALIZACIJA ===")
+    print(f"\n=== VISŲ DUOMENŲ RINKINIŲ VIZUALIZACIJA ===")
     
-    # PCA 2 komponentams
-    pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(X)
+    fig, axes = plt.subplots(3, 3, figsize=(18, 15))
     
-    # Centrai PCA erdvėje
-    centers_pca = pca.transform(kmeans.cluster_centers_)
+    for i, (dataset_name, results) in enumerate(datasets_results.items()):
+        X = results['data']
+        cluster_labels = results['cluster_labels']
+        target = results['target']
+        feature_names = results['feature_names']
+        
+        # Jei duomenys nėra 2D, taikome PCA
+        if X.shape[1] > 2:
+            pca = PCA(n_components=2)
+            X_plot = pca.fit_transform(X)
+            x_label = f'PC1 ({pca.explained_variance_ratio_[0]:.1%})'
+            y_label = f'PC2 ({pca.explained_variance_ratio_[1]:.1%})'
+        else:
+            X_plot = X
+            x_label = feature_names[0] if len(feature_names) > 0 else 'Dim 1'
+            y_label = feature_names[1] if len(feature_names) > 1 else 'Dim 2'
+        
+        # 1. K-means klasteriai
+        scatter1 = axes[i, 0].scatter(X_plot[:, 0], X_plot[:, 1], 
+                                     c=cluster_labels, cmap='viridis', 
+                                     alpha=0.7, s=30)
+        axes[i, 0].set_title(f'{dataset_name}\nK-means klasteriai')
+        axes[i, 0].set_xlabel(x_label)
+        axes[i, 0].set_ylabel(y_label)
+        axes[i, 0].grid(True, alpha=0.3)
+        plt.colorbar(scatter1, ax=axes[i, 0])
+        
+        # 2. Tikri labeliai (jei yra)
+        if target is not None:
+            scatter2 = axes[i, 1].scatter(X_plot[:, 0], X_plot[:, 1], 
+                                         c=target, cmap='Set1', 
+                                         alpha=0.7, s=30)
+            axes[i, 1].set_title(f'{dataset_name}\nTikri labeliai')
+            axes[i, 1].set_xlabel(x_label)
+            axes[i, 1].set_ylabel(y_label)
+            axes[i, 1].grid(True, alpha=0.3)
+            plt.colorbar(scatter2, ax=axes[i, 1])
+        else:
+            axes[i, 1].axis('off')
+            axes[i, 1].text(0.5, 0.5, 'Nėra target\nkintamojo', 
+                           ha='center', va='center', transform=axes[i, 1].transAxes)
+        
+        # 3. Klasterių statistikos
+        unique_labels, counts = np.unique(cluster_labels, return_counts=True)
+        axes[i, 2].bar(unique_labels, counts, color='lightblue', alpha=0.7)
+        axes[i, 2].set_title(f'{dataset_name}\nKlasterių dydžiai')
+        axes[i, 2].set_xlabel('Klasteris')
+        axes[i, 2].set_ylabel('Taškų skaičius')
+        axes[i, 2].grid(True, alpha=0.3)
     
-    # Grafiko sukūrimas
-    fig, axes = plt.subplots(1, 2 if target is not None else 1, figsize=(15, 6))
-    if target is None:
-        axes = [axes]
-    
-    # K-means rezultatai
-    scatter1 = axes[0].scatter(X_pca[:, 0], X_pca[:, 1], 
-                              c=cluster_labels, cmap='viridis', 
-                              alpha=0.7, s=50)
-    axes[0].scatter(centers_pca[:, 0], centers_pca[:, 1], 
-                   c='red', marker='X', s=200, linewidths=2,
-                   label='Centrai')
-    axes[0].set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.2%} dispersijos)')
-    axes[0].set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.2%} dispersijos)')
-    axes[0].set_title('K-means klasteriai (PCA)')
-    axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
-    plt.colorbar(scatter1, ax=axes[0])
-    
-    # Tikri labeliai (jei yra)
-    if target is not None:
-        scatter2 = axes[1].scatter(X_pca[:, 0], X_pca[:, 1], 
-                                  c=target, cmap='Set1', 
-                                  alpha=0.7, s=50)
-        axes[1].set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.2%} dispersijos)')
-        axes[1].set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1]:.2%} dispersijos)')
-        axes[1].set_title('Tikri labeliai (PCA)')
-        axes[1].grid(True, alpha=0.3)
-        plt.colorbar(scatter2, ax=axes[1])
-    
+    plt.suptitle(f'K-means analizė su trimis duomenų rinkiniais (k={recommended_k})', 
+                 fontsize=16, y=0.98)
     plt.tight_layout()
     
     # Išsaugojimas
     os.makedirs('outputs', exist_ok=True)
-    plt.savefig('outputs/kmeans_clusters_2d.png', dpi=300, bbox_inches='tight')
+    plt.savefig('outputs/kmeans_three_datasets_comparison.png', dpi=300, bbox_inches='tight')
     plt.show()
-    
-    print(f"PCA paaiškinta dispersija: {sum(pca.explained_variance_ratio_):.2%}")
 
-def cluster_analysis_report(kmeans, cluster_labels, X, feature_names, metrics):
+def generate_comparison_report(datasets_results, recommended_k):
     """
-    Išsami klasterių analizės ataskaita
+    Generuoja išsamų palyginimo raportą
     """
-    print(f"\n=== KLASTERIŲ ANALIZĖS ATASKAITA ===")
+    print(f"\n{'='*60}")
+    print("           K-MEANS ANALIZĖS PALYGINIMO ATASKAITA")
+    print(f"{'='*60}")
     
-    n_clusters = len(kmeans.cluster_centers_)
+    print(f"\nNAUDOTAS KLASTERIŲ SKAIČIUS: k = {recommended_k}")
+    print(f"(Pagal opt_cluster.py rekomendaciją)")
     
-    # Klasterių centrai
-    centers_df = pd.DataFrame(
-        kmeans.cluster_centers_, 
-        columns=feature_names,
-        index=[f'Klasteris_{i}' for i in range(n_clusters)]
-    )
+    # Metrikos palyginimas
+    print(f"\n{'DUOMENŲ RINKINYS':<25} {'SILHOUETTE':<12} {'CALINSKI-H':<12} {'DAVIES-B':<12} {'SSE':<10}")
+    print("-" * 75)
     
-    print(f"\nKlasterių centrai (standartizuoti duomenys):")
-    print(centers_df.round(3))
-    
-    # Klasterių charakteristikos
-    print(f"\nKlasterių charakteristikos:")
-    for i in range(n_clusters):
-        cluster_mask = cluster_labels == i
-        cluster_size = np.sum(cluster_mask)
-        cluster_data = X[cluster_mask]
+    for dataset_name, results in datasets_results.items():
+        metrics = results['metrics']
+        sse = results['kmeans'].inertia_
         
-        print(f"\n--- Klasteris {i} ---")
-        print(f"Dydis: {cluster_size} taškai")
-        print(f"Vidutinis atstumas iki centro: {np.mean(np.linalg.norm(cluster_data - kmeans.cluster_centers_[i], axis=1)):.3f}")
-        
-        # Svarbiausieji požymiai (didžiausi centrai)
-        center_values = kmeans.cluster_centers_[i]
-        important_features = np.argsort(np.abs(center_values))[-3:][::-1]
-        print(f"Svarbiausieji požymiai:")
-        for idx in important_features:
-            print(f"  {feature_names[idx]}: {center_values[idx]:.3f}")
+        print(f"{dataset_name:<25} {metrics['silhouette']:<12.4f} "
+              f"{metrics['calinski_harabasz']:<12.2f} {metrics['davies_bouldin']:<12.4f} "
+              f"{sse:<10.1f}")
     
-    # Išsaugojimas
-    results_summary = {
-        'n_clusters': int(n_clusters),
-        'total_samples': int(len(cluster_labels)),
-        'sse': float(kmeans.inertia_),
-        'iterations': int(kmeans.n_iter_),
-        'metrics': metrics,
-        'cluster_centers': centers_df.to_dict(),
-        'cluster_sizes': {int(k): int(v) for k, v in metrics['cluster_counts'].items()}
+    # Išorinis vertinimas
+    print(f"\nIŠORINIS VERTINIMAS (su tikrais labeliais):")
+    print(f"{'DUOMENŲ RINKINYS':<25} {'ARI':<10} {'NMI':<10}")
+    print("-" * 50)
+    
+    for dataset_name, results in datasets_results.items():
+        external = results['metrics']['external_metrics']
+        if external:
+            print(f"{dataset_name:<25} {external['ari']:<10.4f} {external['nmi']:<10.4f}")
+        else:
+            print(f"{dataset_name:<25} {'N/A':<10} {'N/A':<10}")
+    
+    # Klasterių pasiskirstymas
+    print(f"\nKLASTERIŲ PASISKIRSTYMAS:")
+    for dataset_name, results in datasets_results.items():
+        counts = results['metrics']['cluster_counts']
+        print(f"\n{dataset_name}:")
+        for cluster, count in counts.items():
+            percentage = (count / sum(counts.values())) * 100
+            print(f"  Klasteris {cluster}: {count} taškai ({percentage:.1f}%)")
+    
+    # Rekomendacijos
+    print(f"\n{'='*60}")
+    print("REKOMENDACIJOS IR IŠVADOS:")
+    print(f"{'='*60}")
+    
+    # Geriausias Silhouette
+    best_silhouette = max(datasets_results.items(), 
+                         key=lambda x: x[1]['metrics']['silhouette'])
+    
+    print(f"\n1. GERIAUSIAS SILHOUETTE SCORE:")
+    print(f"   {best_silhouette[0]} - {best_silhouette[1]['metrics']['silhouette']:.4f}")
+    
+    # Geriausias išorinis vertinimas
+    best_external = None
+    best_ari = -1
+    for name, results in datasets_results.items():
+        external = results['metrics']['external_metrics']
+        if external and external['ari'] > best_ari:
+            best_ari = external['ari']
+            best_external = (name, external)
+    
+    if best_external:
+        print(f"\n2. GERIAUSIAS IŠORINIS VERTINIMAS (ARI):")
+        print(f"   {best_external[0]} - {best_external[1]['ari']:.4f}")
+    
+    print(f"\n3. DUOMENŲ RINKINIŲ CHARAKTERISTIKOS:")
+    for dataset_name, results in datasets_results.items():
+        shape = results['data'].shape
+        print(f"   {dataset_name}: {shape[0]} taškai, {shape[1]} požymiai")
+    
+    print(f"\n4. REKOMENDACIJOS:")
+    print(f"   - Dimensijų mažinimas (t-SNE) gali pagerinti vizualizaciją")
+    print(f"   - Chi² požymių atrinkimas sumažina triukšmą")
+    print(f"   - Pilna duomenų aibė išlaiko maksimalų informacijos kiekį")
+    
+    print(f"\nANALIZĖ BAIGTA! Rezultatai išsaugoti 'outputs/' kataloge.")
+    
+    # JSON išsaugojimas
+    comparison_data = {
+        'recommended_k': recommended_k,
+        'datasets': {}
     }
     
-    with open('outputs/kmeans_results.json', 'w', encoding='utf-8') as f:
-        json.dump(results_summary, f, indent=2, ensure_ascii=False)
+    for dataset_name, results in datasets_results.items():
+        comparison_data['datasets'][dataset_name] = {
+            'shape': results['data'].shape,
+            'features': results['feature_names'],
+            'metrics': {
+                'silhouette': float(results['metrics']['silhouette']),
+                'calinski_harabasz': float(results['metrics']['calinski_harabasz']),
+                'davies_bouldin': float(results['metrics']['davies_bouldin']),
+                'sse': float(results['kmeans'].inertia_)
+            },
+            'cluster_sizes': results['metrics']['cluster_counts'],
+            'external_metrics': results['metrics']['external_metrics']
+        }
     
-    print(f"\nAtalkaita išsaugota: outputs/kmeans_results.json")
+    with open('outputs/kmeans_three_datasets_comparison.json', 'w', encoding='utf-8') as f:
+        json.dump(comparison_data, f, indent=2, ensure_ascii=False)
 
-def compare_different_k_values(X, optimal_results, max_k=8):
+def main():
     """
-    Palygina K-means su skirtingais k (aplink optimalų)
-    """
-    print(f"\n=== K-MEANS PALYGINIMAS SU SKIRTINGAIS K ===")
-    
-    recommended_k = optimal_results['recommendation']['optimal_k']
-    k_values = range(max(2, recommended_k-2), min(max_k+1, recommended_k+3))
-    
-    results = []
-    
-    for k in k_values:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-        labels = kmeans.fit_predict(X)
-        
-        if len(set(labels)) > 1:  # Tik jei yra keli klasteriai
-            sil_score = silhouette_score(X, labels)
-            cal_score = calinski_harabasz_score(X, labels)
-            db_score = davies_bouldin_score(X, labels)
-        else:
-            sil_score = cal_score = db_score = 0
-        
-        results.append({
-            'k': k,
-            'silhouette': sil_score,
-            'calinski_harabasz': cal_score,
-            'davies_bouldin': db_score,
-            'sse': kmeans.inertia_
-        })
-        
-        marker = " ← REKOMENDUOJAMAS" if k == recommended_k else ""
-        print(f"k={k}: Silhouette={sil_score:.3f}, SSE={kmeans.inertia_:.1f}{marker}")
-    
-    # Vizualizacija
-    results_df = pd.DataFrame(results)
-    
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    
-    axes[0,0].plot(results_df['k'], results_df['silhouette'], 'o-', color='green')
-    axes[0,0].axvline(x=recommended_k, color='red', linestyle='--', alpha=0.7)
-    axes[0,0].set_title('Silhouette Score')
-    axes[0,0].set_xlabel('k')
-    axes[0,0].grid(True, alpha=0.3)
-    
-    axes[0,1].plot(results_df['k'], results_df['sse'], 'o-', color='blue')
-    axes[0,1].axvline(x=recommended_k, color='red', linestyle='--', alpha=0.7)
-    axes[0,1].set_title('SSE (Inertia)')
-    axes[0,1].set_xlabel('k')
-    axes[0,1].grid(True, alpha=0.3)
-    
-    axes[1,0].plot(results_df['k'], results_df['calinski_harabasz'], 'o-', color='orange')
-    axes[1,0].axvline(x=recommended_k, color='red', linestyle='--', alpha=0.7)
-    axes[1,0].set_title('Calinski-Harabasz Score')
-    axes[1,0].set_xlabel('k')
-    axes[1,0].grid(True, alpha=0.3)
-    
-    axes[1,1].plot(results_df['k'], results_df['davies_bouldin'], 'o-', color='purple')
-    axes[1,1].axvline(x=recommended_k, color='red', linestyle='--', alpha=0.7)
-    axes[1,1].set_title('Davies-Bouldin Score')
-    axes[1,1].set_xlabel('k')
-    axes[1,1].grid(True, alpha=0.3)
-    
-    plt.suptitle(f'K-means su skirtingais k (rekomenduojamas k={recommended_k})')
-    plt.tight_layout()
-    plt.savefig('outputs/kmeans_k_comparison.png', dpi=300, bbox_inches='tight')
-    plt.show()
-    
-    return results
-
-def main(use_all_features=False):
-    """
-    Pagrindinė K-means analizės funkcija
+    Pagrindinė funkcija - analizuoja tris duomenų rinkinius
     """
     print("K-MEANS KLASTERIZACIJOS ANALIZĖ")
-    print("Naudoja opt_cluster.py rezultatus")
-    print("-" * 60)
+    print("Trys duomenų rinkiniai: Pilnas, Chi², t-SNE")
+    print("="*60)
     
     os.makedirs('outputs', exist_ok=True)
     
@@ -339,36 +402,50 @@ def main(use_all_features=False):
     
     recommended_k = optimal_results['recommendation']['optimal_k']
     
-    # 2. Užkrauname duomenis
-    X, target, feature_names, df = load_and_prepare_data(use_all_features)
+    # 2. Paruošiame tris duomenų rinkinius
+    datasets = []
     
-    # 3. Atliekame K-means su rekomenduojamu k
-    kmeans, cluster_labels = perform_kmeans(X, recommended_k)
+    try:
+        # 2.1 Pilna duomenų aibė
+        X_full, target_full, features_full, name_full = load_full_dataset()
+        datasets.append((X_full, target_full, features_full, name_full))
+        
+        # 2.2 Chi² atrinkti požymiai
+        X_chi2, target_chi2, features_chi2, name_chi2 = load_chi2_dataset()
+        datasets.append((X_chi2, target_chi2, features_chi2, name_chi2))
+        
+        # 2.3 t-SNE sumažintos dimensijos
+        X_tsne, target_tsne, features_tsne, name_tsne = create_tsne_dataset()
+        datasets.append((X_tsne, target_tsne, features_tsne, name_tsne))
+        
+    except Exception as e:
+        print(f"KLAIDA ruošiant duomenis: {e}")
+        return None
     
-    # 4. Vertiname rezultatus
-    metrics = evaluate_clustering(X, cluster_labels, target)
+    # 3. Atliekame K-means analizę visiems rinkiniams
+    datasets_results = {}
     
-    # 5. Vizualizuojame
-    visualize_clusters_2d(X, cluster_labels, kmeans, feature_names, target)
+    for X, target, feature_names, dataset_name in datasets:
+        kmeans, cluster_labels, metrics = perform_kmeans_analysis(
+            X, target, feature_names, dataset_name, recommended_k
+        )
+        
+        datasets_results[dataset_name] = {
+            'data': X,
+            'target': target,
+            'feature_names': feature_names,
+            'kmeans': kmeans,
+            'cluster_labels': cluster_labels,
+            'metrics': metrics
+        }
     
-    # 6. Detali ataskaita
-    cluster_analysis_report(kmeans, cluster_labels, X, feature_names, metrics)
+    # 4. Vizualizacija
+    visualize_all_datasets(datasets_results, recommended_k)
     
-    # 7. Palyginame su kitais k
-    comparison_results = compare_different_k_values(X, optimal_results)
+    # 5. Palyginimo ataskaita
+    generate_comparison_report(datasets_results, recommended_k)
     
-    print(f"\nK-MEANS ANALIZĖ BAIGTA!")
-    print(f"Naudotas k = {recommended_k}")
-    print(f"Silhouette Score = {metrics['silhouette']:.4f}")
-    print(f"Rezultatai išsaugoti 'outputs/' kataloge")
-    
-    return {
-        'kmeans': kmeans,
-        'labels': cluster_labels,
-        'metrics': metrics,
-        'optimal_k': recommended_k
-    }
+    return datasets_results
 
 if __name__ == "__main__":
-    # Naudojame tą patį požymių rinkinį kaip opt_cluster.py
-    results = main(use_all_features=False)
+    results = main()
