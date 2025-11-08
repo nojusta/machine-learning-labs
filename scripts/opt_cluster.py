@@ -68,7 +68,7 @@ def empirical_method(X):
     
     return k_empirical
 
-def elbow_method(X, max_k=10):
+def elbow_method(X, max_k=10, n_init=1, max_iter=100):
     """
     Elbow metodas - SSE skaičiavimas
     """

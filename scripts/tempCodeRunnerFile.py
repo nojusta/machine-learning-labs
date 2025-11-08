@@ -111,14 +111,14 @@ def create_tsne_dataset():
     
     print("Taikomas t-SNE dimensijų mažinimas...")
     
-    # t-SNE parametrai (geriausieji iš II užduoties)
-    perplexity = min(40, X_chi2.shape[0] // 4) if X_chi2.shape[0] > 40 else 5
+    # t-SNE parametrai
+    perplexity = min(30, X_chi2.shape[0] // 4) if X_chi2.shape[0] > 30 else 5
     
     tsne = TSNE(
         n_components=2,
         random_state=42,
         perplexity=perplexity,
-        max_iter=600,  # Geriausias iš II užduoties
+        max_iter=1000,
         learning_rate='auto'
     )
     
@@ -129,7 +129,6 @@ def create_tsne_dataset():
     print(f"t-SNE aibės forma: {X_tsne.shape}")
     print(f"t-SNE požymiai: {feature_names}")
     print(f"Naudotas perplexity: {perplexity}")
-    print(f"Naudotas max_iter: 600 (optimali reikšmė iš II užduoties)")
     
     return X_tsne, target, feature_names, "t-SNE sumažintos dimensijos"
 
@@ -330,56 +329,39 @@ def visualize_individual_datasets(datasets_results, recommended_k):
 def create_cluster_visualization(X, cluster_labels, target, feature_names, 
                                dataset_name, safe_name, recommended_k, kmeans):
     """
-    Sukuria klasterių vizualizacijos grafiką su t-SNE dimensijų mažinimu
+    Sukuria klasterių vizualizacijos grafiką
     """
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
     
-    # Visada naudoti t-SNE vietoj PCA (nes t-SNE davė geriausią rezultatą II užduotyje)
+    # Jei duomenys nėra 2D, taikome PCA
     if X.shape[1] > 2:
-        print(f"Taikomas t-SNE {dataset_name} vizualizacijai...")
+        pca = PCA(n_components=2)
+        X_plot = pca.fit_transform(X)
+        x_label = f'PC1 ({pca.explained_variance_ratio_[0]:.1%})'
+        y_label = f'PC2 ({pca.explained_variance_ratio_[1]:.1%})'
         
-        # t-SNE parametrai su geriausiais iš II užduoties
-        perplexity = min(40, X.shape[0] // 4) if X.shape[0] > 40 else 5
-        
-        tsne = TSNE(
-            n_components=2, 
-            random_state=42, 
-            perplexity=perplexity,
-            max_iter=600,  # Geriausias iš II užduoties
-            learning_rate='auto',
-            n_jobs=1
-        )
-        X_plot = tsne.fit_transform(X)
-        x_label, y_label = 't-SNE 1', 't-SNE 2'
-        
-        print(f"Naudoti t-SNE parametrai: perplexity={perplexity}, max_iter=600")
-        
-        # t-SNE neturi tiesinės transformacijos, todėl centrus negalime transformuoti
-        centers_plot = None
+        # Klasterių centrai PCA erdvėje
+        if hasattr(kmeans, 'cluster_centers_'):
+            centers_pca = pca.transform(kmeans.cluster_centers_)
+        else:
+            centers_pca = None
     else:
-        # Jei duomenys jau 2D (kaip t-SNE rinkinys)
         X_plot = X
         x_label = feature_names[0] if len(feature_names) > 0 else 'Dim 1'
         y_label = feature_names[1] if len(feature_names) > 1 else 'Dim 2'
-        centers_plot = kmeans.cluster_centers_ if hasattr(kmeans, 'cluster_centers_') else None
+        centers_pca = kmeans.cluster_centers_ if hasattr(kmeans, 'cluster_centers_') else None
     
     # 1. K-means klasteriai
     scatter1 = axes[0].scatter(X_plot[:, 0], X_plot[:, 1], 
                               c=cluster_labels, cmap='viridis', 
                               alpha=0.7, s=50)
     
-    # Centrai (tik jei galima juos parodyti)
-    if centers_plot is not None:
-        axes[0].scatter(centers_plot[:, 0], centers_plot[:, 1], 
+    # Centrai
+    if centers_pca is not None:
+        axes[0].scatter(centers_pca[:, 0], centers_pca[:, 1], 
                        c='red', marker='X', s=200, linewidths=2,
                        label='Centrai', edgecolors='black')
         axes[0].legend()
-    elif X.shape[1] > 2:
-        # Jei t-SNE, pridėti paaiškinimą su parametrais
-        axes[0].text(0.02, 0.98, 'Centrai neparodomi\n(t-SNE transformacija)\nmax_iter=600, perplexity≈40', 
-                    transform=axes[0].transAxes, fontsize=8,
-                    verticalalignment='top', 
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor='yellow', alpha=0.7))
     
     axes[0].set_title(f'K-means klasteriai (k={recommended_k})')
     axes[0].set_xlabel(x_label)
@@ -420,9 +402,7 @@ def create_cluster_visualization(X, cluster_labels, target, feature_names,
         axes[2].text(bar.get_x() + bar.get_width()/2., height + 0.5,
                     f'{percentage:.1f}%', ha='center', va='bottom')
     
-    # Pridėti informaciją apie vizualizacijos metodą su parametrais
-    viz_method = "t-SNE vizualizacija (max_iter=600, perplexity≈40)" if X.shape[1] > 2 else "Originalūs duomenys"
-    plt.suptitle(f'{dataset_name} - Klasterių analizė ({viz_method})', fontsize=16, y=1.02)
+    plt.suptitle(f'{dataset_name} - Klasterių analizė', fontsize=16, y=1.02)
     plt.tight_layout()
     
     # Išsaugojimas
@@ -486,10 +466,10 @@ def create_metrics_visualization(metrics, dataset_name, safe_name, recommended_k
                        ha='center', va='center', transform=axes[1, 0].transAxes,
                        fontsize=12, bbox=dict(boxstyle="round", facecolor='lightgray'))
     
-    # 4. Metrikos interpretacija su t-SNE parametrais
+    # 4. Metrikos interpretacija
     axes[1, 1].axis('off')
     
-    # Metrikos interpretacijos tekstas su t-SNE parametrais
+    # Metrikos interpretacijos tekstas
     cluster_counts_sum = sum(cluster_counts.values()) if cluster_counts else 0
     interpretation = f"""Metrikos interpretacija:
 
@@ -504,10 +484,6 @@ Davies-Bouldin: {metrics['davies_bouldin']:.4f}
 
 Klasterių skaičius: {recommended_k}
 Duomenų taškų: {cluster_counts_sum}
-
-Vizualizacija: t-SNE metodas
-(max_iter=600, perplexity≈40)
-Geriausias rezultatas iš II užduoties
 """
     
     axes[1, 1].text(0.05, 0.95, interpretation, transform=axes[1, 1].transAxes,
@@ -680,7 +656,7 @@ def create_summary_comparison(datasets_results, recommended_k):
             axes[1, 1].text(bar.get_x() + bar.get_width()/2., height + 0.02,
                            f'{score:.4f}', ha='center', va='bottom')
     
-    plt.suptitle(f'K-means analizės palyginimas (k={recommended_k}) - t-SNE (max_iter=600, perplexity≈40)', fontsize=16)
+    plt.suptitle(f'K-means analizės palyginimas (k={recommended_k})', fontsize=16)
     plt.tight_layout()
     
     # Išsaugojimas
@@ -702,10 +678,6 @@ def generate_comparison_report(datasets_results, recommended_k, optimal_results)
     print(f"Elbow metodas: k = {optimal_results['elbow']}")
     print(f"Silhouette metodas: k = {optimal_results['silhouette']}")
     print(f"NAUDOJAMAS K: {recommended_k} (daugumos balsavimas)")
-    
-    print(f"\nVIZUALIZACIJOS METODAS:")
-    print("t-SNE dimensijų mažinimas (geriausias rezultatas iš II užduoties)")
-    print("Parametrai: max_iter=600, perplexity≈40")
     
     # Metrikos palyginimas
     print(f"\n{'DUOMENŲ RINKINYS':<25} {'SILHOUETTE':<12} {'CALINSKI-H':<12} {'DAVIES-B':<12}")
@@ -738,36 +710,24 @@ def generate_comparison_report(datasets_results, recommended_k, optimal_results)
             percentage = (count / sum(counts.values())) * 100
             print(f"  Klasteris {cluster}: {count} taškai ({percentage:.1f}%)")
     
-    # JSON išsaugojimas su NumPy tipų konvertavimu
+    # JSON išsaugojimas
     comparison_data = {
         'optimal_k_methods': optimal_results,
-        'recommended_k': int(recommended_k),
-        'visualization_method': 't-SNE (max_iter=600, perplexity≈40, best from task II)',
+        'recommended_k': recommended_k,
         'datasets': {}
     }
     
     for dataset_name, results in datasets_results.items():
-        # Konvertuojame NumPy tipus į standartinės Python tipus
-        cluster_sizes = {}
-        for k, v in results['metrics']['cluster_counts'].items():
-            cluster_sizes[str(k)] = int(v)  # Konvertuojame raktus į str ir reikšmes į int
-        
-        # Konvertuojame external metrics
-        external_metrics = {}
-        if results['metrics']['external_metrics']:
-            for k, v in results['metrics']['external_metrics'].items():
-                external_metrics[k] = float(v)
-        
         comparison_data['datasets'][dataset_name] = {
-            'shape': [int(x) for x in results['data'].shape],  # Konvertuojame tuple į list
+            'shape': results['data'].shape,
             'features': results['feature_names'],
             'metrics': {
                 'silhouette': float(results['metrics']['silhouette']),
                 'calinski_harabasz': float(results['metrics']['calinski_harabasz']),
                 'davies_bouldin': float(results['metrics']['davies_bouldin'])
             },
-            'cluster_sizes': cluster_sizes,
-            'external_metrics': external_metrics
+            'cluster_sizes': results['metrics']['cluster_counts'],
+            'external_metrics': results['metrics']['external_metrics']
         }
     
     with open('outputs/kmeans_three_datasets_comparison.json', 'w', encoding='utf-8') as f:
@@ -776,15 +736,14 @@ def generate_comparison_report(datasets_results, recommended_k, optimal_results)
     # Papildomas optimal_k_results.json (suderinami su senu formatu)
     optimal_k_legacy = {
         'methods': {
-            'empirical': int(optimal_results['empirical']),
-            'elbow': int(optimal_results['elbow']),
-            'silhouette': int(optimal_results['silhouette'])
+            'empirical': optimal_results['empirical'],
+            'elbow': optimal_results['elbow'],
+            'silhouette': optimal_results['silhouette']
         },
         'recommendation': {
-            'optimal_k': int(recommended_k),
+            'optimal_k': recommended_k,
             'consensus': 'automatic'
-        },
-        'visualization': 't-SNE'
+        }
     }
     
     with open('outputs/optimal_k_results.json', 'w', encoding='utf-8') as f:
@@ -792,12 +751,10 @@ def generate_comparison_report(datasets_results, recommended_k, optimal_results)
 
 def main():
     """
-    Pagrindinė funkcija - analizuoja tris duomenų rinkinius su t-SNE vizualizacija
+    Pagrindinė funkcija - analizuoja tris duomenų rinkinius
     """
     print("K-MEANS KLASTERIZACIJOS ANALIZĖ")
     print("Trys duomenų rinkiniai: Pilnas, Chi², t-SNE")
-    print("Vizualizacija: t-SNE metodas (max_iter=600, perplexity≈40)")
-    print("Geriausias rezultatas iš II užduoties")
     print("="*60)
     
     os.makedirs('outputs', exist_ok=True)
@@ -855,23 +812,21 @@ def main():
     generate_comparison_report(datasets_results, recommended_k, optimal_results)
     
     print(f"\n=== SUKURTI PNG FAILAI ===")
-    print(f" optimal_k_methods.png - Optimalaus k metodai")
+    print(f"• optimal_k_methods.png - Optimalaus k metodai")
     safe_names = []
     for dataset_name in datasets_results.keys():
         safe_name = dataset_name.replace(' ', '_').replace('²', '2')
         safe_names.append(safe_name)
-        print(f" {safe_name}_clusters.png - Klasterių vizualizacija (t-SNE)")
-        print(f" {safe_name}_metrics.png - Vertinimo metrikos")
-        print(f" {safe_name}_characteristics.png - Klasterių charakteristikos")
+        print(f"• {safe_name}_clusters.png - Klasterių vizualizacija")
+        print(f"• {safe_name}_metrics.png - Vertinimo metrikos")
+        print(f"• {safe_name}_characteristics.png - Klasterių charakteristikos")
     
-    print(f"kmeans_summary_comparison.png - Bendras palyginimas")
-    print(f"kmeans_three_datasets_comparison.json - Duomenų ataskaita")
-    print(f"optimal_k_results.json - Optimalaus k rezultatai")
+    print(f"• kmeans_summary_comparison.png - Bendras palyginimas")
+    print(f"• kmeans_three_datasets_comparison.json - Duomenų ataskaita")
+    print(f"• optimal_k_results.json - Optimalaus k rezultatai")
     
     print(f"\nViso sukurta: {len(safe_names) * 3 + 2} PNG failų + 2 JSON failai")
     print("Visi failai išsaugoti 'outputs/' kataloge")
-    print("\n PASTABA: Visi grafikai naudoja t-SNE vizualizaciją")
-    print("(max_iter=600, perplexity≈40 - geriausias rezultatas iš II užduoties)")
     
     return datasets_results
 

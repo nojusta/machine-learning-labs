@@ -1,15 +1,12 @@
 {
-  "data_info": {
-    "n_samples": 2111,
-    "n_features": 16
-  },
   "methods": {
-    "empirical": 32,
+    "empirical": 22,
     "elbow": 3,
-    "silhouette": 2
+    "silhouette": 10
   },
   "recommendation": {
-    "optimal_k": 32,
-    "consensus": "Dalinis sutarimas (1/3 metodai)"
-  }
+    "optimal_k": 10,
+    "consensus": "automatic"
+  },
+  "visualization": "t-SNE"
 }
