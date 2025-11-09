@@ -1,7 +1,11 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 from sklearn.manifold import TSNE
+from scipy.stats import mode
+from matplotlib.lines import Line2D
+from sklearn.metrics import accuracy_score
 
 # ---------- 1. Duomenų nuskaitymas ----------
 
@@ -64,7 +68,6 @@ def plot_dendrogram_with_k(X, k, title, figsize=(10, 5)):
 
     return Z, t
 
-
 def plot_tsne_clusters_grid(X_2d, Z, base_k, title_prefix):
     """
     T-SNE 2D vizualizacija su 3 skirtingais k:
@@ -96,6 +99,140 @@ def plot_tsne_clusters_grid(X_2d, Z, base_k, title_prefix):
     plt.tight_layout()
     plt.show()
 
+def cluster_stats(labels):
+    unique, counts = np.unique(labels, return_counts=True)
+    return dict(zip(unique, counts))
+
+def get_cluster_labels(Z, k):
+    """Grąžina klasterių etiketes pagal 'maxclust' (k klasterių)."""
+    return fcluster(Z, t=k, criterion="maxclust")
+
+
+def print_cluster_descriptives(name, cluster_labels, class_labels):
+    """
+    Išveda klasterių aprašomąją statistiką:
+    - dydžius
+    - klasių (4/5/6) pasiskirstymą klasteriuose.
+    """
+    print(f"\n=== {name} ===")
+    # Klasterių dydžiai
+    unique_clusters, counts = np.unique(cluster_labels, return_counts=True)
+    print("Klasterių dydžiai (klasteris: objektų sk.):")
+    for c, n in zip(unique_clusters, counts):
+        print(f"  {c}: {n}")
+
+    # Klasės pagal klasterius
+    unique_classes = np.unique(class_labels)
+    print("\nKlasės pagal klasterius (kiekis):")
+    for c in unique_clusters:
+        mask_cluster = (cluster_labels == c)
+        cls_in_cluster = class_labels[mask_cluster]
+        vals, cnts = np.unique(cls_in_cluster, return_counts=True)
+        line = f"  Klasteris {c}: "
+        parts = []
+        for v, ct in zip(vals, cnts):
+            parts.append(f"klasė {v}: {ct}")
+        print(line + ", ".join(parts))
+
+def map_clusters_to_classes(cluster_labels, true_labels):
+    """
+    Priskiria kiekvienam klasteriui tą klasę, kuri jame pasitaiko dažniausiai.
+    Grąžina masyvą mapped_preds su tomis pačiomis dimensijomis kaip cluster_labels.
+    """
+    mapping = {}
+    for cl in np.unique(cluster_labels):
+        mask = (cluster_labels == cl)
+        majority_class = mode(true_labels[mask], keepdims=True)[0][0]
+        mapping[cl] = majority_class
+
+    mapped_preds = np.array([mapping[c] for c in cluster_labels])
+    return mapped_preds, mapping
+
+
+def compute_mismatch_per_class(true_labels, mapped_preds):
+    """
+    Suskaičiuoja, kiek neatitikimų yra kiekvienoje klasėje.
+    """
+    mismatch_counts = {}
+    classes = np.unique(true_labels)
+    for cls in classes:
+        mask = (true_labels == cls)
+        mismatch_counts[int(cls)] = int(np.sum(true_labels[mask] != mapped_preds[mask]))
+    return mismatch_counts
+
+
+def plot_tsne_overlap(X_tsne2d, true_labels, mapped_preds, title_suffix=""):
+    matches = (true_labels == mapped_preds)
+    colors_overlap = np.where(matches, "gray", "red")
+
+    unique_classes = np.unique(true_labels)
+
+    plt.figure(figsize=(12, 4))
+
+    # 1) t-SNE su tikromis klasėmis
+    plt.subplot(1, 3, 1)
+    for cls in unique_classes:
+        m = (true_labels == cls)
+        plt.scatter(
+            X_tsne2d[m, 0],
+            X_tsne2d[m, 1],
+            s=15,
+            label=f"Klasė {cls}"
+        )
+    plt.title("t-SNE su klasėmis")
+    plt.xlabel("t-SNE 1")
+    plt.ylabel("t-SNE 2")
+    plt.legend(fontsize=8, loc="best")
+
+    # 2) t-SNE su klasterizavimo rezultatais (po priskyrimo klasėms)
+    plt.subplot(1, 3, 2)
+    for cls in unique_classes:
+        m = (mapped_preds == cls)
+        plt.scatter(
+            X_tsne2d[m, 0],
+            X_tsne2d[m, 1],
+            s=15,
+        )
+    plt.title("t-SNE su klasteriais (hierarchinis)")
+    plt.xlabel("t-SNE 1")
+    plt.ylabel("t-SNE 2")
+    plt.legend(fontsize=8, loc="best")
+
+    # 3) Atitikimas / neatitikimas
+    plt.subplot(1, 3, 3)
+    plt.scatter(
+        X_tsne2d[:, 0],
+        X_tsne2d[:, 1],
+        c=colors_overlap,
+        s=15
+    )
+    plt.title(f"t-SNE persidengimas{title_suffix}")
+    plt.xlabel("t-SNE 1")
+    plt.ylabel("t-SNE 2")
+
+    match_legend = Line2D(
+        [0], [0],
+        marker="o",
+        color="w",
+        markerfacecolor="gray",
+        markersize=5,
+        label="Atitinka klasę"
+    )
+    mismatch_legend = Line2D(
+        [0], [0],
+        marker="o",
+        color="w",
+        markerfacecolor="red",
+        markersize=5,
+        label="Neatitinka klasės"
+    )
+    plt.legend(handles=[match_legend, mismatch_legend],
+               fontsize=8,
+               loc="best")
+
+    plt.tight_layout()
+    plt.show()
+
 # ---------- 3. Dendrogramos ir k parinkimas ----------
 k_full = 2
 k_sel = 2
@@ -114,7 +251,6 @@ Z_tsne, t_tsne = plot_dendrogram_with_k(
 )
 
 # ---------- 4. t-SNE vizualizacijos su k, k+1, k+2 ----------
-
 tsne_full_vis = TSNE(
     n_components=2,
     perplexity=40,
@@ -151,3 +287,54 @@ plot_tsne_clusters_grid(
     k_tsne,
     "t-SNE 2D aibė, Ward"
 )
+
+# ---------- Klasterių palyginimas ir stabilumas (k=3, atrinkti 6 požymiai) ----------
+df_outliers = pd.read_csv("../data/outliers.csv")
+
+classes_k3 = df_outliers["NObeyesdad"].to_numpy()
+outlier_type_k3 = df_outliers["outlier_type"].to_numpy()
+
+labels_sel_k3 = get_cluster_labels(Z_sel, k=3)
+
+rows = []
+for c in sorted(np.unique(labels_sel_k3)):
+    mask = (labels_sel_k3 == c)
+    rows.append({
+        "Klasteris": int(c),
+        "Objektų sk.": int(mask.sum()),
+        "Klasė 4": int(((classes_k3 == 4) & mask).sum()),
+        "Klasė 5": int(((classes_k3 == 5) & mask).sum()),
+        "Klasė 6": int(((classes_k3 == 6) & mask).sum()),
+        "Vidinių išskirčių (1)": int(((outlier_type_k3 == 1) & mask).sum()),
+        "Išorinių išskirčių (2)": int(((outlier_type_k3 == 2) & mask).sum()),
+    })
+
+df_k3_summary = pd.DataFrame(rows)
+print("\n5.3.1 klasterių statistika (atrinkti 6 požymiai, k=3):")
+print(df_k3_summary.to_string(index=False))
+
+# ---------- Klasterių tikslumas ----------
+true_classes = df_sel["NObeyesdad"].to_numpy()
+
+k_compare = 3
+clusters_tsne_k3 = fcluster(Z_tsne, t=k_compare, criterion="maxclust")
+
+mapped_preds, cluster_to_class = map_clusters_to_classes(clusters_tsne_k3, true_classes)
+
+accuracy = accuracy_score(true_classes, mapped_preds)
+total = len(true_classes)
+mismatch_total = int(np.sum(true_classes != mapped_preds))
+mismatch_rate = mismatch_total / total * 100
+
+print(f"\n=== Klasterizavimo tikslumas (t-SNE aibė, k=3) ===")
+print(f"Tikslumas: {accuracy*100:.2f}%")
+print(f"Neatitinkančių objektų: {mismatch_total} iš {total} ({mismatch_rate:.2f}%)")
+print("Klasterių → klasių atvaizdavimas:", cluster_to_class)
+
+mismatch_per_class = compute_mismatch_per_class(true_classes, mapped_preds)
+print("\nNeatitikimai pagal klasę:")
+for cls, cnt in mismatch_per_class.items():
+    print(f"  Klasė {cls}: {cnt} neatitinkančių objektų")
+
+plot_tsne_overlap(X_tsne2d, true_classes, mapped_preds,
+                  title_suffix=f" (k={k_compare})")
