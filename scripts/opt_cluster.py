@@ -296,7 +296,7 @@ def main():
     k_empirical = empirical_method(X)
     
     # Elbow metodas
-    max_k = min(15, len(X) // 10)
+    max_k = min(8, len(X) // 20)
     k_elbow, sse_values, K_range = elbow_method(X, max_k)
     
     # Silueto metodas
