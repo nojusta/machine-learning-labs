@@ -1,6 +1,8 @@
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from imblearn.under_sampling import RandomUnderSampler
 
 df = pd.read_csv("../data/normalized_minmax_all.csv")
 
@@ -13,7 +15,7 @@ all_features = [c for c in df.columns if c not in ["NObeyesdad","Weight","Height
 X = df[all_features]
 y = df["NObeyesdad"]
 
-# Split
+# 4. Train/test padalinimas (tinkamas etapas požymių atrankai)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, stratify=y, random_state=42
 )
