@@ -49,7 +49,7 @@ def load_outliers(df, naudoti_raw=False):
     """Užkrauna išskirtis iš failų vietoj skaičiavimo"""
     candidates = [
         os.path.join(os.path.dirname(__file__), "..", "data", "non-norm_outliers.csv" if naudoti_raw else "outliers.csv"),
-        os.path.join(".", "data", "non-norm_outliers.csv" if naudoti_raw else "outliers.csv"),
+        os.path.join("", "data", "non-norm_outliers.csv" if naudoti_raw else "outliers.csv"),
         "../data/non-norm_outliers.csv" if naudoti_raw else "../data/outliers.csv"
     ]
     
@@ -95,13 +95,13 @@ def load_data(pozymiai, naudoti_raw=False):
     if naudoti_raw:
         candidates = [
             os.path.join(os.path.dirname(__file__), "..", "data", "clean_data.csv"),
-            os.path.join(".", "data", "clean_data.csv"),
+            os.path.join("", "data", "clean_data.csv"),
             "../data/clean_data.csv"
         ]
     else:
         candidates = [
             os.path.join(os.path.dirname(__file__), "..", "data", "normalized_minmax.csv"),
-            os.path.join(".", "data", "normalized_minmax.csv"),
+            os.path.join("", "data", "normalized_minmax.csv"),
             "../data/normalized_minmax.csv"
         ]
     df = None
@@ -117,7 +117,7 @@ def load_data(pozymiai, naudoti_raw=False):
         # Jei nėra normalizuoto, bandome iš clean_data.csv sugeneruoti min-max
         clean_candidates = [
             os.path.join(os.path.dirname(__file__), "..", "data", "clean_data.csv"),
-            os.path.join(".", "data", "clean_data.csv"),
+            os.path.join("", "data", "clean_data.csv"),
             "../data/clean_data.csv"
         ]
         clean_df = None
@@ -223,7 +223,7 @@ def main():
     full_outliers_df = None
     candidates = [
         os.path.join(os.path.dirname(__file__), "..", "data", "non-norm_outliers.csv" if naudoti_raw else "outliers.csv"),
-        os.path.join(".", "data", "non-norm_outliers.csv" if naudoti_raw else "outliers.csv"),
+        os.path.join("", "data", "non-norm_outliers.csv" if naudoti_raw else "outliers.csv"),
         "../data/non-norm_outliers.csv" if naudoti_raw else "../data/outliers.csv"
     ]
     
