@@ -676,7 +676,7 @@ def main():
     print("K-MEANS KLASTERIZACIJOS IŠSAMI ANALIZĖ")
     print("="*60)
     
-    os.makedirs('outputs/kmean', exist_ok=True)
+    os.makedirs('../outputs/kmean', exist_ok=True)
     
     # 1. Uzkrauname visus duomenu rinkinius
     datasets = load_all_datasets()

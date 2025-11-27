@@ -25,7 +25,7 @@ def load_and_prepare_data(use_all_features=False):
     
     candidates = [
         os.path.join(os.path.dirname(__file__), "..", "data", filename),
-        os.path.join(".", "data", filename),
+        os.path.join("..", "data", filename),
         f"../data/{filename}"
     ]
     
@@ -108,7 +108,7 @@ def elbow_method(X, max_k=10):
     plt.legend()
     plt.xticks(K)
     
-    os.makedirs('outputs', exist_ok=True)
+    os.makedirs('../outputs', exist_ok=True)
     plt.tight_layout()
     plt.savefig('outputs/elbow_method.png', dpi=300, bbox_inches='tight')
     plt.show()
@@ -287,7 +287,7 @@ def main():
     print("Metodai: Empirinis, Elbow, Vidutinio silueto")
     print("-" * 60)
     
-    os.makedirs('outputs', exist_ok=True)
+    os.makedirs('../outputs', exist_ok=True)
     
     # Duomenų paruošimas
     X, df, feature_names = load_and_prepare_data()
