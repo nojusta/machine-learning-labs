@@ -63,7 +63,7 @@ def plot_2d_decision_surface(X, y, feature_names, model):
 
 
 def main():
-    df = pd.read_csv("./data/classification_data.csv")
+    df = pd.read_csv("./data/classification_data_tsne.csv")
 
     target_col = "NObeyesdad"
 
@@ -99,20 +99,6 @@ def main():
     print("\n=== CROSS-VAL (Random Forest) ===")
     for metric, value in cv_results["random_forest"].items():
         print(f"{metric}: {value:.4f}")
-
-    # ====== 2D VIZUALIZACIJA ======
-    # Pasirenkam 2 požymius vizualizacijai – gali keisti pagal poreikį
-    feature_names = ["FCVC", "FAF"]  # arba list(X.columns)[:2]
-
-    print("\nBraižome 2D sprendimo ribą su požymiais:", feature_names)
-
-    rf_for_plot = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42,
-    )
-
-    plot_2d_decision_surface(X, y, feature_names, rf_for_plot)
-
 
 if __name__ == "__main__":
     main()
