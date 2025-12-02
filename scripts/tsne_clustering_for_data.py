@@ -3,7 +3,7 @@ from sklearn.manifold import TSNE
 
 def main():
     # 1. Užkraunam klasifikavimo aibę (6 požymiai + klasė)
-    df = pd.read_csv("./data/classification_data.csv")
+    df = pd.read_csv("../data/classification_train_val.csv")
 
     feature_cols = ["FCVC", "FAF", "CH2O", "NCP", "TUE", "MTRANS"]
     target_col = "NObeyesdad"
@@ -39,7 +39,7 @@ def main():
         "NObeyesdad": df[target_col]
     })
 
-    out_cluster = "./data/classification_data_tsne.csv"
+    out_cluster = "../data/classification_train_val_tsne.csv"
     df_final.to_csv(out_cluster, index=False)
 
     print(f"\nKlasterizacijai skirtas failas išsaugotas į: {out_cluster}")
