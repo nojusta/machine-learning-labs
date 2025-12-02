@@ -52,3 +52,17 @@ df_balanced.to_csv("../data/classification_data.csv", index=False)
 print("\nSukurtas SUBALANSUOTAS classification_data.csv")
 print(f"Iš viso įrašų → {len(df_balanced)}")
 
+# 80/20 padalijimas mokymui+validacijai ir testavimui
+train_val_df, test_df = train_test_split(
+    df_balanced,
+    test_size=0.2,
+    stratify=df_balanced["NObeyesdad"],
+    random_state=42,
+)
+
+train_val_df.to_csv("../data/classification_train_val.csv", index=False)
+test_df.to_csv("../data/classification_test.csv", index=False)
+
+print("\nSukurtas SUBALANSUOTAS classification_data.csv")
+print(f"Iš viso įrašų: {len(df_balanced)}")
+print(f"Train+Val: {len(train_val_df)}, Test: {len(test_df)}")
