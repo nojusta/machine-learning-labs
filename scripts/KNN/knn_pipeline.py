@@ -1,12 +1,16 @@
 """
-KNN training/validation/test pipeline for binary classification (obesity classes 4 vs 5).
+Complete KNN pipeline for binary classification (classes 4 vs 5).
 
-Pipeline:
-- Train/validation split on classification_train_val.csv to pick best k (odd numbers).
-- Euclidean distance, best k chosen by validation F1 (positive class = 5).
-- Cross-validation on train+validation data with the chosen k.
-- Final evaluation on classification_test.csv.
-- Metrics, plots, and JSON outputs are written to scripts/KNN/artifacts/.
+Parts:
+- Validation grid search on train_val data (full features and t-SNE 2D).
+- Cross-validation on train_val using the best hyperparameters.
+- Final one-time evaluation on test data.
+- Plots and CSV/JSON artifacts for reporting.
+
+Rules respected:
+- Test sets are never used for tuning.
+- Train/validation split is done only inside the train_val set.
+- Features are already normalized; no extra scaling is applied.
 """
 
 from __future__ import annotations
@@ -19,6 +23,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+
+# Headless, writable Matplotlib config
 mpl_cache = Path(__file__).resolve().parent / ".mpl-cache"
 mpl_cache.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("MPLCONFIGDIR", str(mpl_cache))
@@ -27,7 +33,8 @@ import matplotlib  # noqa: E402
 
 matplotlib.use("Agg")  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
-import seaborn as sns
+import seaborn as sns  # noqa: E402
+from matplotlib.colors import ListedColormap
 from sklearn.metrics import (
     accuracy_score,
     auc,
@@ -45,32 +52,30 @@ from sklearn.neighbors import KNeighborsClassifier
 class RunConfig:
     random_state: int = 42
     val_size: float = 0.2
-    k_values: List[int] = field(default_factory=lambda: list(range(1, 22, 2)))
+    k_values: List[int] = field(
+        default_factory=lambda: sorted(set(list(range(1, 22, 2)) + [20]))
+    )  # 1..21 odd + 20 to cover k>=20
     cv_splits: int = 5
     pos_label: int = 5
+    distances: List[str] = field(default_factory=lambda: ["euclidean", "manhattan"])
 
 
-def load_datasets() -> Tuple[pd.DataFrame, pd.DataFrame, List[str]]:
-    """Load train/validation and test CSVs and align the target column name."""
-    repo_root = Path(__file__).resolve().parents[2]
-    data_dir = repo_root / "data"
-    train_val_path = data_dir / "classification_train_val.csv"
-    test_path = data_dir / "classification_test.csv"
+@dataclass
+class DatasetSpec:
+    name: str
+    train_val_path: Path
+    test_path: Path
+    is_2d: bool = False  # for optional decision boundary plots
 
-    df_train_val = pd.read_csv(train_val_path)
-    df_test = pd.read_csv(test_path)
 
-    df_train_val = df_train_val.rename(columns={"NObeyesdad": "label"})
-    df_test = df_test.rename(columns={"NObeyesdad": "label"})
-
-    feature_cols = [c for c in df_train_val.columns if c != "label"]
-    return df_train_val, df_test, feature_cols
+def load_dataset(path: Path) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    return df.rename(columns={"NObeyesdad": "label"})
 
 
 def compute_basic_metrics(
     y_true: pd.Series, y_pred: np.ndarray, pos_label: int
 ) -> Dict[str, float]:
-    """Return accuracy/precision/recall/F1 with a fixed positive class."""
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "precision": float(
@@ -81,62 +86,61 @@ def compute_basic_metrics(
     }
 
 
-def evaluate_k_grid(
+def evaluate_grid(
     X_train: pd.DataFrame,
     y_train: pd.Series,
     X_val: pd.DataFrame,
     y_val: pd.Series,
     config: RunConfig,
+    distance: str,
 ) -> List[Dict[str, float]]:
-    """Train/evaluate a range of k values on the holdout validation set."""
     results: List[Dict[str, float]] = []
-
     for k in config.k_values:
-        model = KNeighborsClassifier(n_neighbors=k, metric="euclidean")
+        model = KNeighborsClassifier(n_neighbors=k, metric=distance)
         model.fit(X_train, y_train)
         y_val_pred = model.predict(X_val)
         metrics = compute_basic_metrics(y_val, y_val_pred, pos_label=config.pos_label)
-        metrics["k"] = k
+        metrics.update({"k": k, "distance": distance})
         results.append(metrics)
-
     return results
 
 
-def select_best_k(validation_results: List[Dict[str, float]]) -> Dict[str, float]:
-    """Pick the entry with the highest F1; ties resolved by smaller k."""
-    return max(validation_results, key=lambda row: (row["f1"], -row["k"]))
+def select_best_row(rows: List[Dict[str, float]]) -> Dict[str, float]:
+    # Highest F1, then smaller k, then prefer euclidean over manhattan implicitly via distance order
+    distance_order = {"euclidean": 0, "manhattan": 1}
+    return max(
+        rows,
+        key=lambda r: (r["f1"], -r["k"], -distance_order.get(r.get("distance", ""), 99)),
+    )
 
 
-def plot_metric_curves(
-    validation_results: List[Dict[str, float]], plots_dir: Path
-) -> Path:
-    """Line plot for validation metrics over k."""
-    df = pd.DataFrame(validation_results)
+def plot_metric_curves(df: pd.DataFrame, path: Path) -> None:
     plt.figure(figsize=(8, 5))
-    for metric, label in [
-        ("accuracy", "Accuracy"),
-        ("precision", "Precision"),
-        ("recall", "Recall"),
-        ("f1", "F1 score"),
-    ]:
-        sns.lineplot(data=df, x="k", y=metric, marker="o", label=label)
-
-    plt.xlabel("k (number of neighbors)")
-    plt.ylabel("Score")
+    metrics = ["accuracy", "precision", "recall", "f1"]
+    df_melt = df.melt(
+        id_vars=["k", "distance"], value_vars=metrics, var_name="metric", value_name="score"
+    )
+    sns.lineplot(
+        data=df_melt,
+        x="k",
+        y="score",
+        hue="metric",
+        style="distance",
+        marker="o",
+    )
     plt.ylim(0, 1.05)
+    plt.xlabel("k (neighbors)")
+    plt.ylabel("Score")
     plt.title("Validation metrics vs k")
     plt.grid(True, alpha=0.3)
     plt.legend()
-    plots_dir.mkdir(parents=True, exist_ok=True)
-    path = plots_dir / "validation_metrics_vs_k.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
     plt.tight_layout()
     plt.savefig(path, dpi=200)
     plt.close()
-    return path
 
 
-def plot_confusion_matrix(cm: np.ndarray, labels: List[int], path: Path) -> None:
-    """Save a labeled confusion matrix heatmap."""
+def plot_confusion_matrix(cm: np.ndarray, labels: List[int], title: str, path: Path) -> None:
     plt.figure(figsize=(4, 3.5))
     sns.heatmap(
         cm,
@@ -149,25 +153,91 @@ def plot_confusion_matrix(cm: np.ndarray, labels: List[int], path: Path) -> None
     )
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.title("Test confusion matrix")
+    plt.title(title)
     plt.tight_layout()
     plt.savefig(path, dpi=200)
     plt.close()
 
 
-def plot_roc(fpr: np.ndarray, tpr: np.ndarray, roc_auc: float, path: Path) -> None:
-    """Save ROC curve plot."""
+def plot_roc(fpr: np.ndarray, tpr: np.ndarray, roc_auc: float, path: Path, title: str) -> None:
     plt.figure(figsize=(5, 4))
     plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.3f}", color="#1f77b4", linewidth=2)
     plt.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    plt.title("Test ROC curve")
+    plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(path, dpi=200)
     plt.close()
+
+
+def decision_boundary_2d(
+    model: KNeighborsClassifier,
+    X_fit: pd.DataFrame,
+    y_fit: pd.Series,
+    X_plot: pd.DataFrame,
+    y_plot: pd.Series,
+    path: Path,
+    title: str,
+) -> None:
+    """Decision boundary plot: background fit on X_fit/y_fit, scatter from X_plot/y_plot."""
+    assert X_fit.shape[1] == 2 and X_plot.shape[1] == 2, "Decision boundary is for 2D features."
+    model.fit(X_fit, y_fit)
+
+    all_points = pd.concat([X_fit, X_plot], axis=0)
+    x_range = all_points.iloc[:, 0].max() - all_points.iloc[:, 0].min()
+    y_range = all_points.iloc[:, 1].max() - all_points.iloc[:, 1].min()
+    padding_x = max(0.05, 0.15 * x_range)
+    padding_y = max(0.05, 0.15 * y_range)
+    x_min, x_max = all_points.iloc[:, 0].min() - padding_x, all_points.iloc[:, 0].max() + padding_x
+    y_min, y_max = all_points.iloc[:, 1].min() - padding_y, all_points.iloc[:, 1].max() + padding_y
+    xx, yy = np.meshgrid(
+        np.linspace(x_min, x_max, 400),
+        np.linspace(y_min, y_max, 400),
+    )
+    grid = pd.DataFrame(np.c_[xx.ravel(), yy.ravel()], columns=X_fit.columns)
+    zz = model.predict(grid).reshape(xx.shape)
+
+    plt.figure(figsize=(6.8, 5.6))
+    plt.contourf(xx, yy, zz, alpha=0.3, cmap="coolwarm")
+    scatter = plt.scatter(
+        X_plot.iloc[:, 0],
+        X_plot.iloc[:, 1],
+        c=y_plot,
+        cmap="coolwarm",
+        edgecolor="k",
+        s=40,
+        alpha=0.8,
+    )
+    plt.title(title)
+    plt.xlabel(X_fit.columns[0])
+    plt.ylabel(X_fit.columns[1])
+    plt.legend(*scatter.legend_elements(), title="Class", loc="upper right")
+    plt.tight_layout()
+    plt.savefig(path, dpi=220)
+    plt.close()
+
+
+def evaluate_split(
+    model: KNeighborsClassifier,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_eval: pd.DataFrame,
+    y_eval: pd.Series,
+    pos_label: int,
+    cm_path: Path,
+    cm_title: str,
+) -> Tuple[Dict[str, float], np.ndarray, np.ndarray]:
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_eval)
+    metrics = compute_basic_metrics(y_eval, y_pred, pos_label=pos_label)
+    cm = confusion_matrix(y_eval, y_pred, labels=[4, 5])
+    plot_confusion_matrix(cm, labels=[4, 5], title=cm_title, path=cm_path)
+    proba_index = list(model.classes_).index(pos_label)
+    y_proba = model.predict_proba(X_eval)[:, proba_index]
+    return metrics, y_pred, y_proba
 
 
 def evaluate_on_test(
@@ -178,43 +248,44 @@ def evaluate_on_test(
     y_test: pd.Series,
     plots_dir: Path,
     pos_label: int,
+    prefix: str,
 ) -> Dict[str, object]:
-    """Train on full train+val data, evaluate on test, and save plots."""
-    model.fit(X_train_val, y_train_val)
-    y_pred = model.predict(X_test)
-    metrics = compute_basic_metrics(y_test, y_pred, pos_label=pos_label)
+    metrics, y_pred, y_proba = evaluate_split(
+        model,
+        X_train_val,
+        y_train_val,
+        X_test,
+        y_test,
+        pos_label=pos_label,
+        cm_path=plots_dir / f"{prefix}_test_confusion_matrix.png",
+        cm_title=f"{prefix} Test confusion matrix",
+    )
 
-    cm = confusion_matrix(y_test, y_pred, labels=[4, 5])
-    cm_path = plots_dir / "test_confusion_matrix.png"
-    plot_confusion_matrix(cm, labels=[4, 5], path=cm_path)
-
-    proba_index = list(model.classes_).index(pos_label)
-    y_proba = model.predict_proba(X_test)[:, proba_index]
     fpr, tpr, _ = roc_curve(y_test, y_proba, pos_label=pos_label)
     roc_auc = float(auc(fpr, tpr))
-    roc_path = plots_dir / "test_roc_curve.png"
-    plot_roc(fpr, tpr, roc_auc, roc_path)
+    roc_path = plots_dir / f"{prefix}_test_roc_curve.png"
+    plot_roc(fpr, tpr, roc_auc, roc_path, title=f"{prefix} Test ROC curve")
 
     return {
         "metrics": metrics,
-        "confusion_matrix": cm.tolist(),
+        "confusion_matrix": confusion_matrix(y_test, y_pred, labels=[4, 5]).tolist(),
         "roc_curve": {
             "fpr": fpr.tolist(),
             "tpr": tpr.tolist(),
             "auc": roc_auc,
         },
         "plots": {
-            "confusion_matrix": str(cm_path),
+            "confusion_matrix": str(plots_dir / f"{prefix}_test_confusion_matrix.png"),
             "roc_curve": str(roc_path),
         },
         "y_pred": y_pred.tolist(),
+        "y_proba": y_proba.tolist(),
     }
 
 
 def run_cross_validation(
-    X: pd.DataFrame, y: pd.Series, k: int, config: RunConfig
+    X: pd.DataFrame, y: pd.Series, k: int, distance: str, config: RunConfig
 ) -> Dict[str, float]:
-    """Stratified k-fold cross-validation on train+validation data."""
     skf = StratifiedKFold(
         n_splits=config.cv_splits,
         shuffle=True,
@@ -226,7 +297,7 @@ def run_cross_validation(
         X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
         y_tr, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
-        model = KNeighborsClassifier(n_neighbors=k, metric="euclidean")
+        model = KNeighborsClassifier(n_neighbors=k, metric=distance)
         model.fit(X_tr, y_tr)
         y_pred = model.predict(X_val)
         fold_metrics.append(compute_basic_metrics(y_val, y_pred, pos_label=config.pos_label))
@@ -236,28 +307,33 @@ def run_cross_validation(
         values = [fold[metric] for fold in fold_metrics]
         aggregated[f"{metric}_mean"] = float(np.mean(values))
         aggregated[f"{metric}_std"] = float(np.std(values))
-
     return aggregated
 
 
 def analyze_errors(
-    X_test: pd.DataFrame, y_true: pd.Series, y_pred: List[int], pos_label: int
+    X_test: pd.DataFrame,
+    y_true: pd.Series,
+    y_pred: List[int],
+    y_proba: List[float],
+    pos_label: int,
+    save_path: Path,
 ) -> Dict[str, object]:
-    """Inspect false positives/negatives and their feature tendencies."""
-    annotated = X_test.copy()
-    annotated["true_label"] = y_true.values
-    annotated["pred_label"] = y_pred
+    df = X_test.copy()
+    df["true_label"] = y_true.values
+    df["pred_label"] = y_pred
+    df["pred_proba_pos"] = y_proba
+    mis = df[df["true_label"] != df["pred_label"]].copy()
+    mis["index"] = mis.index
 
-    fp = annotated[(annotated["true_label"] == 4) & (annotated["pred_label"] == pos_label)]
-    fn = annotated[(annotated["true_label"] == pos_label) & (annotated["pred_label"] == 4)]
+    fp = mis[(mis["true_label"] == 4) & (mis["pred_label"] == pos_label)]
+    fn = mis[(mis["true_label"] == pos_label) & (mis["pred_label"] == 4)]
 
     feature_cols = list(X_test.columns)
 
     def summarize(subset: pd.DataFrame, reference_label: int) -> Dict[str, object]:
         if subset.empty:
             return {"count": 0, "top_feature_deviations": [], "examples": []}
-
-        ref = annotated[annotated["true_label"] == reference_label]
+        ref = df[df["true_label"] == reference_label]
         ref_mean = ref[feature_cols].mean()
         subset_mean = subset[feature_cols].mean()
         deltas = (subset_mean - ref_mean).sort_values(key=lambda s: s.abs(), ascending=False)
@@ -265,38 +341,33 @@ def analyze_errors(
             {"feature": feat, "shift_vs_class_mean": float(deltas[feat])}
             for feat in deltas.index[:3]
         ]
+        examples = subset[feature_cols + ["true_label", "pred_label", "pred_proba_pos", "index"]].head(
+            5
+        ).to_dict(orient="records")
+        return {"count": int(len(subset)), "top_feature_deviations": top, "examples": examples}
 
-        examples = (
-            subset[feature_cols + ["true_label", "pred_label"]]
-            .head(5)
-            .to_dict(orient="records")
-        )
+    boundary_like = float((mis["pred_proba_pos"].between(0.4, 0.6)).mean()) if len(mis) else 0.0
 
-        return {
-            "count": int(len(subset)),
-            "top_feature_deviations": top,
-            "examples": examples,
-        }
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    mis[["index", "true_label", "pred_label", "pred_proba_pos"]].to_csv(save_path, index=False)
 
     return {
+        "total_misclassified": int(len(mis)),
+        "fraction_near_boundary_prob_0.4_0.6": boundary_like,
         "false_positive": summarize(fp, reference_label=4),
         "false_negative": summarize(fn, reference_label=pos_label),
+        "csv_path": str(save_path),
     }
 
 
-def save_json(data: Dict[str, object], path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+def run_experiment(spec: DatasetSpec, config: RunConfig, base_dir: Path) -> Dict[str, object]:
+    df_train_val = load_dataset(spec.train_val_path)
+    df_test = load_dataset(spec.test_path)
+    feature_cols = [c for c in df_train_val.columns if c != "label"]
 
-
-def main() -> None:
-    config = RunConfig()
-    df_train_val, df_test, feature_cols = load_datasets()
-
-    artifacts_dir = Path(__file__).resolve().parent / "artifacts"
-    plots_dir = artifacts_dir / "plots"
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = base_dir / spec.name
+    plots_dir = out_dir / "plots"
+    out_dir.mkdir(parents=True, exist_ok=True)
     plots_dir.mkdir(parents=True, exist_ok=True)
 
     X = df_train_val[feature_cols]
@@ -310,37 +381,110 @@ def main() -> None:
         random_state=config.random_state,
     )
 
-    validation_results = evaluate_k_grid(X_train, y_train, X_val, y_val, config=config)
-    best_entry = select_best_k(validation_results)
+    all_val_rows: List[Dict[str, float]] = []
+    for distance in config.distances:
+        all_val_rows.extend(evaluate_grid(X_train, y_train, X_val, y_val, config, distance=distance))
+
+    val_df = pd.DataFrame(all_val_rows)
+    val_metrics_path = out_dir / "validation_metrics_per_k.csv"
+    val_df.to_csv(val_metrics_path, index=False)
+    plot_metric_curves(val_df, path=plots_dir / "validation_metrics_vs_k.png")
+
+    best_entry = select_best_row(all_val_rows)
     best_k = int(best_entry["k"])
+    best_distance = best_entry["distance"]
 
-    val_metrics_path = artifacts_dir / "validation_metrics_per_k.csv"
-    pd.DataFrame(validation_results).to_csv(val_metrics_path, index=False)
-    metrics_plot_path = plot_metric_curves(validation_results, plots_dir=plots_dir)
+    # Validation confusion matrix for the chosen k/distance
+    best_val_model = KNeighborsClassifier(n_neighbors=best_k, metric=best_distance)
+    val_metrics_best, y_val_pred, y_val_proba = evaluate_split(
+        best_val_model,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        pos_label=config.pos_label,
+        cm_path=plots_dir / "validation_confusion_matrix.png",
+        cm_title=f"{spec.name} Validation confusion matrix (k={best_k}, {best_distance})",
+    )
 
-    best_model = KNeighborsClassifier(n_neighbors=best_k, metric="euclidean")
+    cv_results = run_cross_validation(X, y, best_k, distance=best_distance, config=config)
+
+    # Final test evaluation (train on full train_val)
+    final_model = KNeighborsClassifier(n_neighbors=best_k, metric=best_distance)
     test_eval = evaluate_on_test(
-        best_model,
+        final_model,
         X_train_val=X,
         y_train_val=y,
         X_test=df_test[feature_cols],
         y_test=df_test["label"],
         plots_dir=plots_dir,
         pos_label=config.pos_label,
+        prefix="full" if spec.name == "full_features" else spec.name,
     )
-    predictions = test_eval.pop("y_pred")
 
-    cv_results = run_cross_validation(X, y, best_k, config=config)
-    error_details = analyze_errors(df_test[feature_cols], df_test["label"], predictions, config.pos_label)
+    error_details = analyze_errors(
+        df_test[feature_cols],
+        df_test["label"],
+        test_eval["y_pred"],
+        test_eval["y_proba"],
+        config.pos_label,
+        save_path=out_dir / "misclassified_indices.csv",
+    )
 
-    results = {
-        "config": {
-            "random_state": config.random_state,
-            "val_size": config.val_size,
-            "k_grid": config.k_values,
-            "cv_splits": config.cv_splits,
-            "pos_label": config.pos_label,
-        },
+    # Decision boundary plots: separate train/val and test views (background fit on train/val)
+    boundary_plot_train = None
+    boundary_plot_test = None
+    if spec.is_2d:
+        boundary_plot_train = str(plots_dir / "decision_boundary_tsne_trainval.png")
+        boundary_plot_test = str(plots_dir / "decision_boundary_tsne_test.png")
+        decision_boundary_2d(
+            KNeighborsClassifier(n_neighbors=best_k, metric=best_distance),
+            X_fit=X,
+            y_fit=y,
+            X_plot=X,
+            y_plot=y,
+            path=plots_dir / "decision_boundary_tsne_trainval.png",
+            title=f"{spec.name} decision boundary (train/val, k={best_k}, {best_distance})",
+        )
+        decision_boundary_2d(
+            KNeighborsClassifier(n_neighbors=best_k, metric=best_distance),
+            X_fit=X,
+            y_fit=y,
+            X_plot=df_test[feature_cols],
+            y_plot=df_test["label"],
+            path=plots_dir / "decision_boundary_tsne_test.png",
+            title=f"{spec.name} decision boundary (test, k={best_k}, {best_distance})",
+        )
+    elif {"FCVC", "FAF"}.issubset(feature_cols):
+        two_feats = ["FCVC", "FAF"]
+        boundary_plot_train = str(plots_dir / "decision_boundary_fcvc_faf_trainval.png")
+        boundary_plot_test = str(plots_dir / "decision_boundary_fcvc_faf_test.png")
+        decision_boundary_2d(
+            KNeighborsClassifier(n_neighbors=best_k, metric=best_distance),
+            X_fit=df_train_val[two_feats],
+            y_fit=y,
+            X_plot=df_train_val[two_feats],
+            y_plot=y,
+            path=plots_dir / "decision_boundary_fcvc_faf_trainval.png",
+            title=f"Decision boundary on FCVC/FAF (train/val, k={best_k}, {best_distance})",
+        )
+        decision_boundary_2d(
+            KNeighborsClassifier(n_neighbors=best_k, metric=best_distance),
+            X_fit=df_train_val[two_feats],
+            y_fit=y,
+            X_plot=df_test[two_feats],
+            y_plot=df_test["label"],
+            path=plots_dir / "decision_boundary_fcvc_faf_test.png",
+            title=f"Decision boundary on FCVC/FAF (test, k={best_k}, {best_distance})",
+        )
+
+    # Drop heavy arrays before saving JSON
+    test_eval.pop("y_pred", None)
+    test_eval.pop("y_proba", None)
+
+    return {
+        "dataset": spec.name,
+        "features": feature_cols,
         "data_summary": {
             "train_val_samples": int(len(df_train_val)),
             "test_samples": int(len(df_test)),
@@ -349,33 +493,81 @@ def main() -> None:
             "train_size": int(len(X_train)),
             "val_size": int(len(X_val)),
         },
+        "best_hyperparams": {
+            "k": best_k,
+            "distance": best_distance,
+            "validation_metrics": val_metrics_best,
+        },
         "validation": {
-            "best_k": best_k,
-            "best_metrics": {k: float(v) for k, v in best_entry.items() if k != "k"},
-            "per_k": validation_results,
-            "artifacts": {
-                "metrics_csv": str(val_metrics_path),
-                "metrics_plot": str(metrics_plot_path),
-            },
+            "per_k": all_val_rows,
+            "best_confusion_matrix_path": str(plots_dir / "validation_confusion_matrix.png"),
+            "metrics_csv": str(val_metrics_path),
+            "metrics_plot": str(plots_dir / "validation_metrics_vs_k.png"),
         },
         "cross_validation": cv_results,
         "test": test_eval,
         "error_analysis": error_details,
         "artifacts": {
             "plots_dir": str(plots_dir),
-            "json_path": str(artifacts_dir / "knn_results.json"),
+            "boundary_plot_train": boundary_plot_train,
+            "boundary_plot_test": boundary_plot_test,
         },
+    }
+
+
+def save_json(data: Dict[str, object], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def main() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    data_dir = repo_root / "data"
+    artifacts_dir = Path(__file__).resolve().parent / "artifacts"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    config = RunConfig()
+
+    specs = [
+        DatasetSpec(
+            name="full_features",
+            train_val_path=data_dir / "classification_train_val.csv",
+            test_path=data_dir / "classification_test.csv",
+            is_2d=False,
+        ),
+        DatasetSpec(
+            name="tsne_2d",
+            train_val_path=data_dir / "classification_train_val_tsne.csv",
+            test_path=data_dir / "classification_test_tsne.csv",
+            is_2d=True,
+        ),
+    ]
+
+    experiments: Dict[str, object] = {}
+    for spec in specs:
+        experiments[spec.name] = run_experiment(spec, config=config, base_dir=artifacts_dir)
+        print(
+            f"[{spec.name}] best k={experiments[spec.name]['best_hyperparams']['k']} "
+            f"distance={experiments[spec.name]['best_hyperparams']['distance']} "
+            f"val F1={experiments[spec.name]['best_hyperparams']['validation_metrics']['f1']:.4f}"
+        )
+
+    results = {
+        "config": {
+            "random_state": config.random_state,
+            "val_size": config.val_size,
+            "k_values": config.k_values,
+            "cv_splits": config.cv_splits,
+            "pos_label": config.pos_label,
+            "distances": config.distances,
+        },
+        "experiments": experiments,
     }
 
     json_path = artifacts_dir / "knn_results.json"
     save_json(results, json_path)
-
-    print(f"\nBest k (by validation F1): {best_k}")
-    print(f"Validation F1: {best_entry['f1']:.4f}")
-    print(f"Test accuracy: {test_eval['metrics']['accuracy']:.4f}")
-    print(f"Test F1: {test_eval['metrics']['f1']:.4f}")
-    print(f"Cross-val mean F1 ({config.cv_splits} folds): {cv_results['f1_mean']:.4f}")
-    print(f"Results saved to: {json_path}")
+    print(f"\nAll results saved to: {json_path}")
 
 
 if __name__ == "__main__":
