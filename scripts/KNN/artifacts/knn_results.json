@@ -1,0 +1,696 @@
+{
+  "config": {
+    "random_state": 42,
+    "val_size": 0.2,
+    "k_values": [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19,
+      20,
+      21
+    ],
+    "cv_splits": 5,
+    "pos_label": 5,
+    "distances": [
+      "euclidean"
+    ],
+    "force_k": 5
+  },
+  "experiments": {
+    "full_features": {
+      "dataset": "full_features",
+      "features": [
+        "FCVC",
+        "FAF",
+        "CH2O",
+        "NCP",
+        "TUE",
+        "MTRANS"
+      ],
+      "data_summary": {
+        "train_val_samples": 469,
+        "test_samples": 119,
+        "train_val_class_counts": {
+          "5": 238,
+          "4": 231
+        },
+        "test_class_counts": {
+          "4": 60,
+          "5": 59
+        },
+        "train_size": 375,
+        "val_size": 94,
+        "overlap_removed_from_train": 6
+      },
+      "best_hyperparams": {
+        "k": 5,
+        "distance": "euclidean",
+        "validation_metrics": {
+          "accuracy": 0.8297872340425532,
+          "precision": 0.7758620689655172,
+          "recall": 0.9375,
+          "f1": 0.8490566037735849
+        }
+      },
+      "validation": {
+        "per_k": [
+          {
+            "accuracy": 0.851063829787234,
+            "precision": 0.7931034482758621,
+            "recall": 0.9583333333333334,
+            "f1": 0.8679245283018868,
+            "k": 1,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8085106382978723,
+            "precision": 0.75,
+            "recall": 0.9375,
+            "f1": 0.8333333333333334,
+            "k": 3,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8297872340425532,
+            "precision": 0.7758620689655172,
+            "recall": 0.9375,
+            "f1": 0.8490566037735849,
+            "k": 5,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8085106382978723,
+            "precision": 0.75,
+            "recall": 0.9375,
+            "f1": 0.8333333333333334,
+            "k": 7,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.7978723404255319,
+            "precision": 0.7301587301587301,
+            "recall": 0.9583333333333334,
+            "f1": 0.8288288288288288,
+            "k": 9,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.776595744680851,
+            "precision": 0.7076923076923077,
+            "recall": 0.9583333333333334,
+            "f1": 0.8141592920353983,
+            "k": 11,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.776595744680851,
+            "precision": 0.7142857142857143,
+            "recall": 0.9375,
+            "f1": 0.8108108108108109,
+            "k": 13,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.776595744680851,
+            "precision": 0.7213114754098361,
+            "recall": 0.9166666666666666,
+            "f1": 0.8073394495412844,
+            "k": 15,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.776595744680851,
+            "precision": 0.7142857142857143,
+            "recall": 0.9375,
+            "f1": 0.8108108108108109,
+            "k": 17,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.776595744680851,
+            "precision": 0.7142857142857143,
+            "recall": 0.9375,
+            "f1": 0.8108108108108109,
+            "k": 19,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.7659574468085106,
+            "precision": 0.7166666666666667,
+            "recall": 0.8958333333333334,
+            "f1": 0.7962962962962963,
+            "k": 20,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.7553191489361702,
+            "precision": 0.7049180327868853,
+            "recall": 0.8958333333333334,
+            "f1": 0.7889908256880734,
+            "k": 21,
+            "distance": "euclidean"
+          }
+        ],
+        "best_confusion_matrix_path": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots/validation_confusion_matrix.png",
+        "metrics_csv": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/validation_metrics_per_k.csv",
+        "metrics_plot": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots/validation_metrics_vs_k.png"
+      },
+      "cross_validation": {
+        "accuracy_mean": 0.865705788149165,
+        "accuracy_std": 0.010458802126050997,
+        "precision_mean": 0.8329698960043788,
+        "precision_std": 0.03172410480321221,
+        "recall_mean": 0.924468085106383,
+        "recall_std": 0.053841769753721555,
+        "f1_mean": 0.8743876463238314,
+        "f1_std": 0.012425704041198377
+      },
+      "test": {
+        "metrics": {
+          "accuracy": 0.8403361344537815,
+          "precision": 0.7941176470588235,
+          "recall": 0.9152542372881356,
+          "f1": 0.8503937007874016
+        },
+        "confusion_matrix": [
+          [
+            46,
+            14
+          ],
+          [
+            5,
+            54
+          ]
+        ],
+        "roc_curve": {
+          "fpr": [
+            0.0,
+            0.016666666666666666,
+            0.11666666666666667,
+            0.23333333333333334,
+            0.26666666666666666,
+            0.4666666666666667,
+            1.0
+          ],
+          "tpr": [
+            0.0,
+            0.576271186440678,
+            0.847457627118644,
+            0.9152542372881356,
+            0.9830508474576272,
+            1.0,
+            1.0
+          ],
+          "auc": 0.942090395480226
+        },
+        "plots": {
+          "confusion_matrix": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots/full_test_confusion_matrix.png",
+          "roc_curve": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots/full_test_roc_curve.png"
+        }
+      },
+      "error_analysis": {
+        "total_misclassified": 19,
+        "fraction_near_boundary_prob_0.4_0.6": 0.5789473684210527,
+        "false_positive": {
+          "count": 14,
+          "top_feature_deviations": [
+            {
+              "feature": "CH2O",
+              "shift_vs_class_mean": -0.20295238095238094
+            },
+            {
+              "feature": "NCP",
+              "shift_vs_class_mean": 0.1744938095238095
+            },
+            {
+              "feature": "TUE",
+              "shift_vs_class_mean": -0.12396428571428575
+            }
+          ],
+          "examples": [
+            {
+              "FCVC": 0.5,
+              "FAF": 0.0,
+              "CH2O": 0.5,
+              "NCP": 0.6667,
+              "TUE": 0.5,
+              "MTRANS": 0.75,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 1.0,
+              "index": 2
+            },
+            {
+              "FCVC": 0.91,
+              "FAF": 0.4967,
+              "CH2O": 0.495,
+              "NCP": 0.6667,
+              "TUE": 0.0,
+              "MTRANS": 1.0,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.8,
+              "index": 4
+            },
+            {
+              "FCVC": 0.66,
+              "FAF": 0.23,
+              "CH2O": 0.055,
+              "NCP": 0.6667,
+              "TUE": 0.15,
+              "MTRANS": 1.0,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.6,
+              "index": 13
+            },
+            {
+              "FCVC": 0.5,
+              "FAF": 0.4467,
+              "CH2O": 0.3,
+              "NCP": 0.6633,
+              "TUE": 0.0,
+              "MTRANS": 0.75,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.6,
+              "index": 24
+            },
+            {
+              "FCVC": 0.165,
+              "FAF": 0.1067,
+              "CH2O": 0.44,
+              "NCP": 0.6667,
+              "TUE": 0.0,
+              "MTRANS": 0.75,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.8,
+              "index": 32
+            }
+          ]
+        },
+        "false_negative": {
+          "count": 5,
+          "top_feature_deviations": [
+            {
+              "feature": "MTRANS",
+              "shift_vs_class_mean": -0.22711864406779658
+            },
+            {
+              "feature": "CH2O",
+              "shift_vs_class_mean": 0.15325423728813564
+            },
+            {
+              "feature": "NCP",
+              "shift_vs_class_mean": 0.05171322033898318
+            }
+          ],
+          "examples": [
+            {
+              "FCVC": 0.75,
+              "FAF": 0.3167,
+              "CH2O": 0.065,
+              "NCP": 0.6667,
+              "TUE": 0.51,
+              "MTRANS": 1.0,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.4,
+              "index": 5
+            },
+            {
+              "FCVC": 0.615,
+              "FAF": 0.2867,
+              "CH2O": 0.515,
+              "NCP": 0.6633,
+              "TUE": 0.225,
+              "MTRANS": 1.0,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.4,
+              "index": 47
+            },
+            {
+              "FCVC": 0.525,
+              "FAF": 0.3567,
+              "CH2O": 0.91,
+              "NCP": 0.6667,
+              "TUE": 0.0,
+              "MTRANS": 1.0,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.4,
+              "index": 66
+            },
+            {
+              "FCVC": 1.0,
+              "FAF": 0.6667,
+              "CH2O": 1.0,
+              "NCP": 0.6667,
+              "TUE": 0.0,
+              "MTRANS": 0.0,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.4,
+              "index": 74
+            },
+            {
+              "FCVC": 0.5,
+              "FAF": 0.0,
+              "CH2O": 0.5,
+              "NCP": 0.6667,
+              "TUE": 0.0,
+              "MTRANS": 0.25,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.2,
+              "index": 104
+            }
+          ]
+        },
+        "csv_path": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/misclassified_indices.csv"
+      },
+      "artifacts": {
+        "plots_dir": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots",
+        "boundary_plot_train": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots/decision_boundary_fcvc_faf_trainval.png",
+        "boundary_plot_test": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/full_features/plots/decision_boundary_fcvc_faf_test.png"
+      }
+    },
+    "tsne_2d": {
+      "dataset": "tsne_2d",
+      "features": [
+        "tsne_1",
+        "tsne_2"
+      ],
+      "data_summary": {
+        "train_val_samples": 475,
+        "test_samples": 119,
+        "train_val_class_counts": {
+          "5": 238,
+          "4": 237
+        },
+        "test_class_counts": {
+          "4": 60,
+          "5": 59
+        },
+        "train_size": 380,
+        "val_size": 95,
+        "overlap_removed_from_train": 0
+      },
+      "best_hyperparams": {
+        "k": 5,
+        "distance": "euclidean",
+        "validation_metrics": {
+          "accuracy": 0.8947368421052632,
+          "precision": 0.88,
+          "recall": 0.9166666666666666,
+          "f1": 0.8979591836734694
+        }
+      },
+      "validation": {
+        "per_k": [
+          {
+            "accuracy": 0.8736842105263158,
+            "precision": 0.86,
+            "recall": 0.8958333333333334,
+            "f1": 0.8775510204081632,
+            "k": 1,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.9052631578947369,
+            "precision": 0.8823529411764706,
+            "recall": 0.9375,
+            "f1": 0.9090909090909091,
+            "k": 3,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8947368421052632,
+            "precision": 0.88,
+            "recall": 0.9166666666666666,
+            "f1": 0.8979591836734694,
+            "k": 5,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8842105263157894,
+            "precision": 0.8627450980392157,
+            "recall": 0.9166666666666666,
+            "f1": 0.8888888888888888,
+            "k": 7,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8421052631578947,
+            "precision": 0.8113207547169812,
+            "recall": 0.8958333333333334,
+            "f1": 0.8514851485148515,
+            "k": 9,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8421052631578947,
+            "precision": 0.8,
+            "recall": 0.9166666666666666,
+            "f1": 0.8543689320388349,
+            "k": 11,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8421052631578947,
+            "precision": 0.7894736842105263,
+            "recall": 0.9375,
+            "f1": 0.8571428571428571,
+            "k": 13,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8210526315789474,
+            "precision": 0.7719298245614035,
+            "recall": 0.9166666666666666,
+            "f1": 0.8380952380952381,
+            "k": 15,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8315789473684211,
+            "precision": 0.7758620689655172,
+            "recall": 0.9375,
+            "f1": 0.8490566037735849,
+            "k": 17,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8421052631578947,
+            "precision": 0.7796610169491526,
+            "recall": 0.9583333333333334,
+            "f1": 0.8598130841121495,
+            "k": 19,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8315789473684211,
+            "precision": 0.7758620689655172,
+            "recall": 0.9375,
+            "f1": 0.8490566037735849,
+            "k": 20,
+            "distance": "euclidean"
+          },
+          {
+            "accuracy": 0.8421052631578947,
+            "precision": 0.7796610169491526,
+            "recall": 0.9583333333333334,
+            "f1": 0.8598130841121495,
+            "k": 21,
+            "distance": "euclidean"
+          }
+        ],
+        "best_confusion_matrix_path": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots/validation_confusion_matrix.png",
+        "metrics_csv": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/validation_metrics_per_k.csv",
+        "metrics_plot": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots/validation_metrics_vs_k.png"
+      },
+      "cross_validation": {
+        "accuracy_mean": 0.848421052631579,
+        "accuracy_std": 0.04345214198010588,
+        "precision_mean": 0.8252138917032534,
+        "precision_std": 0.043591448425273,
+        "recall_mean": 0.8861702127659574,
+        "recall_std": 0.060805134222940614,
+        "f1_mean": 0.8536002247319023,
+        "f1_std": 0.04293355409043069
+      },
+      "test": {
+        "metrics": {
+          "accuracy": 0.5042016806722689,
+          "precision": 0.5,
+          "recall": 0.5084745762711864,
+          "f1": 0.5042016806722689
+        },
+        "confusion_matrix": [
+          [
+            30,
+            30
+          ],
+          [
+            29,
+            30
+          ]
+        ],
+        "roc_curve": {
+          "fpr": [
+            0.0,
+            0.26666666666666666,
+            0.4,
+            0.5,
+            0.5833333333333334,
+            0.8166666666666667,
+            1.0
+          ],
+          "tpr": [
+            0.0,
+            0.1694915254237288,
+            0.3728813559322034,
+            0.5084745762711864,
+            0.6949152542372882,
+            0.9661016949152542,
+            1.0
+          ],
+          "auc": 0.5269774011299435
+        },
+        "plots": {
+          "confusion_matrix": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots/tsne_2d_test_confusion_matrix.png",
+          "roc_curve": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots/tsne_2d_test_roc_curve.png"
+        }
+      },
+      "error_analysis": {
+        "total_misclassified": 59,
+        "fraction_near_boundary_prob_0.4_0.6": 0.288135593220339,
+        "false_positive": {
+          "count": 30,
+          "top_feature_deviations": [
+            {
+              "feature": "tsne_1",
+              "shift_vs_class_mean": 3.430244227666667
+            },
+            {
+              "feature": "tsne_2",
+              "shift_vs_class_mean": 0.15707868278333326
+            }
+          ],
+          "examples": [
+            {
+              "tsne_1": 5.151041,
+              "tsne_2": -1.3055637,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.6,
+              "index": 0
+            },
+            {
+              "tsne_1": 0.28502968,
+              "tsne_2": 2.0193386,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.8,
+              "index": 7
+            },
+            {
+              "tsne_1": 3.9243417,
+              "tsne_2": -0.35817394,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 1.0,
+              "index": 9
+            },
+            {
+              "tsne_1": -0.7407656,
+              "tsne_2": 0.5735658,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 0.6,
+              "index": 11
+            },
+            {
+              "tsne_1": 5.1405997,
+              "tsne_2": -0.083939664,
+              "true_label": 4,
+              "pred_label": 5,
+              "pred_proba_pos": 1.0,
+              "index": 20
+            }
+          ]
+        },
+        "false_negative": {
+          "count": 29,
+          "top_feature_deviations": [
+            {
+              "feature": "tsne_1",
+              "shift_vs_class_mean": -2.2848119304208065
+            },
+            {
+              "feature": "tsne_2",
+              "shift_vs_class_mean": 1.0831713406078318
+            }
+          ],
+          "examples": [
+            {
+              "tsne_1": -2.28666,
+              "tsne_2": 1.3608295,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.4,
+              "index": 1
+            },
+            {
+              "tsne_1": -8.350641,
+              "tsne_2": 1.1206667,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.0,
+              "index": 5
+            },
+            {
+              "tsne_1": -3.2828999,
+              "tsne_2": 2.7784405,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.2,
+              "index": 14
+            },
+            {
+              "tsne_1": -6.1691008,
+              "tsne_2": 1.3742884,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.2,
+              "index": 15
+            },
+            {
+              "tsne_1": -6.2574253,
+              "tsne_2": 2.278328,
+              "true_label": 5,
+              "pred_label": 4,
+              "pred_proba_pos": 0.2,
+              "index": 17
+            }
+          ]
+        },
+        "csv_path": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/misclassified_indices.csv"
+      },
+      "artifacts": {
+        "plots_dir": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots",
+        "boundary_plot_train": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots/decision_boundary_tsne_trainval.png",
+        "boundary_plot_test": "/Users/nojukas123/Documents/vscode/machine-learning-labs/scripts/KNN/artifacts/tsne_2d/plots/decision_boundary_tsne_test.png"
+      }
+    }
+  }
+}
