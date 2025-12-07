@@ -191,6 +191,51 @@ plt.legend()
 plt.grid(alpha=0.3)
 plt.show()
 
+# ==========================================================
+# 6B. KLAIDŲ ANALIZĖ – MISCLASSIFIED POINTS
+# ==========================================================
+
+print("\n=== KLAIDŲ ANALIZĖ (originalūs požymiai) ===")
+
+# Prognozės test rinkinyje
+y_pred_test = best_model.predict(X_test)
+
+# Randame klaidingas eilutes
+mis_idx = np.where(y_pred_test != y_test)[0]
+
+misclassified = X_test.copy().iloc[mis_idx]
+misclassified["y_true"] = y_test.iloc[mis_idx].values
+misclassified["y_pred"] = y_pred_test[mis_idx]
+
+# Išsaugoti CSV
+misclassified.to_csv("../outputs/decision_tree/misclassified_dt.csv", index=False)
+
+print(f"Klaidų skaičius: {len(misclassified)}")
+print(misclassified.head())
+
+# ========= VIDURKIŲ LENTELĖ =========
+
+original_features = X_test.columns.tolist()
+
+# Klaidų grupės
+c4_wrong = misclassified[misclassified["y_true"] == 4]
+c5_wrong = misclassified[misclassified["y_true"] == 5]
+
+# Teisingos grupės
+c4_correct = X_test[(y_test == 4) & (y_pred_test == 4)]
+c5_correct = X_test[(y_test == 5) & (y_pred_test == 5)]
+
+summary_table = pd.DataFrame({
+    "4 klasė – teisingai": c4_correct[original_features].mean(),
+    "4 klasė – klaidingai": c4_wrong[original_features].mean(),
+    "5 klasė – teisingai": c5_correct[original_features].mean(),
+    "5 klasė – klaidingai": c5_wrong[original_features].mean(),
+})
+
+summary_table.to_csv("../outputs/decision_tree/error_summary_dt.csv")
+
+print("\n=== Klaidų vidurkių lentelė ===")
+print(summary_table)
 
 # ==========================================================
 # === === ===   t-SNE  ANALIZĖ   === === ===
@@ -290,6 +335,52 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 plt.grid(alpha=0.3)
 plt.show()
+
+# ==========================================================
+# 6C. KLAIDŲ ANALIZĖ – t-SNE MISCLASSIFIED POINTS
+# ==========================================================
+
+print("\n=== KLAIDŲ ANALIZĖ (t-SNE požymiai) ===")
+
+# Prognozės t-SNE test rinkinyje
+y_pred_tsne_test = best_tsne["model"].predict(X_test_tsne)
+
+# Randame klaidingas eilutes
+mis_idx_tsne = np.where(y_pred_tsne_test != y_test_tsne)[0]
+
+misclassified_tsne = X_test_tsne.copy().iloc[mis_idx_tsne]
+misclassified_tsne["y_true"] = y_test_tsne.iloc[mis_idx_tsne].values
+misclassified_tsne["y_pred"] = y_pred_tsne_test[mis_idx_tsne]
+
+# Išsaugoti CSV
+misclassified_tsne.to_csv("../outputs/decision_tree/misclassified_dt_tsne.csv", index=False)
+
+print(f"Klaidų skaičius (t-SNE): {len(misclassified_tsne)}")
+print(misclassified_tsne.head())
+
+# ========= VIDURKIŲ LENTELĖ t-SNE =========
+
+tsne_features = X_test_tsne.columns.tolist()
+
+# Klaidų grupės
+c4_wrong_tsne = misclassified_tsne[misclassified_tsne["y_true"] == 4]
+c5_wrong_tsne = misclassified_tsne[misclassified_tsne["y_true"] == 5]
+
+# Teisingos grupės
+c4_correct_tsne = X_test_tsne[(y_test_tsne == 4) & (y_pred_tsne_test == 4)]
+c5_correct_tsne = X_test_tsne[(y_test_tsne == 5) & (y_pred_tsne_test == 5)]
+
+summary_table_tsne = pd.DataFrame({
+    "4 klasė – teisingai": c4_correct_tsne[tsne_features].mean(),
+    "4 klasė – klaidingai": c4_wrong_tsne[tsne_features].mean(),
+    "5 klasė – teisingai": c5_correct_tsne[tsne_features].mean(),
+    "5 klasė – klaidingai": c5_wrong_tsne[tsne_features].mean(),
+})
+
+summary_table_tsne.to_csv("../outputs/decision_tree/error_summary_dt_tsne.csv")
+
+print("\n=== Klaidų vidurkių lentelė (t-SNE) ===")
+print(summary_table_tsne)
 
 # ==========================================================
 # === 7. SPRENDIMO RIBŲ VIZUALIZACIJA (BOUNDARY PLOTS) ===
