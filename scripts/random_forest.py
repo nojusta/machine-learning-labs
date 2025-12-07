@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestClassifier
@@ -379,6 +381,15 @@ def experiment_original_features():
         "original_decision_boundary.png",
     )
 
+    X_train_val_2d = X_train_val[top2_features]
+    plot_decision_boundary_2d(
+        rf_2d,
+        X_train_val_2d,
+        y_train_val,
+        f"RF sprendimo ribos 2D (train+val, požymiai: {top2_features[0]}, {top2_features[1]})",
+       "original_decision_boundary_trainval.png",
+    )
+
     # 6) Klaidingų klasifikacijų eksportas (pilni 6 požymiai)
     export_misclassified(
         X_test,
@@ -556,6 +567,14 @@ def experiment_tsne_features():
         y_test,
         "RF sprendimo ribos t-SNE 2D erdvėje (test rinkinys)",
         "tsne_decision_boundary.png",
+    )
+
+    plot_decision_boundary_2d(
+        best_model,
+        X_train_val[["tsne_1", "tsne_2"]],
+        y_train_val,
+        "RF sprendimo ribos t-SNE 2D erdvėje (train+val aibė)",
+        "tsne_decision_boundary_trainval.png",
     )
 
     # 5) Klaidingų klasifikacijų eksportas t-SNE erdvėje
