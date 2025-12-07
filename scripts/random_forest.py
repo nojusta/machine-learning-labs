@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
+from pathlib import Path
+from typing import Dict, List
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
@@ -254,6 +255,54 @@ def export_misclassified(df_features: pd.DataFrame, y_true, y_pred, filename: st
     print(f"\nKlaidingų klasifikacijų: {len(df_err)} / {len(df_features)}")
     print(f"Išsaugota į: {out_path}")
 
+def analyze_errors(
+    X_test: pd.DataFrame,
+    y_true: pd.Series,
+    y_pred: List[int],
+    y_proba: List[float],
+    pos_label: int,
+    save_path: Path,
+) -> Dict[str, object]:
+    df = X_test.copy()
+    df["true_label"] = y_true.values
+    df["pred_label"] = y_pred
+    df["pred_proba_pos"] = y_proba
+    mis = df[df["true_label"] != df["pred_label"]].copy()
+    mis["index"] = mis.index
+
+    fp = mis[(mis["true_label"] == 4) & (mis["pred_label"] == pos_label)]
+    fn = mis[(mis["true_label"] == pos_label) & (mis["pred_label"] == 4)]
+
+    feature_cols = list(X_test.columns)
+
+    def summarize(subset: pd.DataFrame, reference_label: int) -> Dict[str, object]:
+        if subset.empty:
+            return {"count": 0, "top_feature_deviations": [], "examples": []}
+        ref = df[df["true_label"] == reference_label]
+        ref_mean = ref[feature_cols].mean()
+        subset_mean = subset[feature_cols].mean()
+        deltas = (subset_mean - ref_mean).sort_values(key=lambda s: s.abs(), ascending=False)
+        top = [
+            {"feature": feat, "shift_vs_class_mean": float(deltas[feat])}
+            for feat in deltas.index[:3]
+        ]
+        examples = subset[feature_cols + ["true_label", "pred_label", "pred_proba_pos", "index"]].head(
+            5
+        ).to_dict(orient="records")
+        return {"count": int(len(subset)), "top_feature_deviations": top, "examples": examples}
+
+    boundary_like = float((mis["pred_proba_pos"].between(0.4, 0.6)).mean()) if len(mis) else 0.0
+
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    mis[["index", "true_label", "pred_label", "pred_proba_pos"]].to_csv(save_path, index=False)
+
+    return {
+        "total_misclassified": int(len(mis)),
+        "fraction_near_boundary_prob_0.4_0.6": boundary_like,
+        "false_positive": summarize(fp, reference_label=4),
+        "false_negative": summarize(fn, reference_label=pos_label),
+        "csv_path": str(save_path),
+    }
 
 # ============================================================
 # EKSPERIMENTAS SU ORIGINALIAIS 6 POŽYMIAIS
@@ -397,6 +446,21 @@ def experiment_original_features():
         y_pred_test,
         "misclassified_original_features.csv",
     )
+
+    error_report = analyze_errors(
+        X_test,
+        y_test,
+        y_pred_test.tolist(),
+        y_proba_test.tolist(),
+        POS_LABEL,
+        Path(OUTPUT_DIR) / "original_misclassified_examples.csv",
+    )
+    print("\n--- ERROR ANALYSIS (originalūs požymiai) ---")
+    print(f"Klaidingų prognozių: {error_report['total_misclassified']}")
+    print(f"Prie sprendimo ribos (p∈[0.4,0.6]): {error_report['fraction_near_boundary_prob_0.4_0.6']:.2f}")
+    print(f"False positives: {error_report['false_positive']['count']}")
+    print(f"False negatives: {error_report['false_negative']['count']}")
+    print(f"CSV: {error_report['csv_path']}")
 
     # --- 6.5) OOB validacija su tuo pačiu geriausiu RF ---
     # Kuriame kopiją su oob_score=True (bootstrap paliekam True – default)
@@ -579,11 +643,26 @@ def experiment_tsne_features():
 
     # 5) Klaidingų klasifikacijų eksportas t-SNE erdvėje
     export_misclassified(
-        X_test,  # čia tik tsne_1, tsne_2
+        X_test, 
         y_test,
         y_pred_test,
         "misclassified_tsne_features.csv",
     )
+
+    error_report = analyze_errors(
+        X_test,
+        y_test,
+        y_pred_test.tolist(),
+        y_proba_test.tolist(),
+        POS_LABEL,
+        Path(OUTPUT_DIR) / "tsne_misclassified_examples.csv",
+    )
+    print("\n--- ERROR ANALYSIS (t-SNE požymiai) ---")
+    print(f"Klaidingų prognozių: {error_report['total_misclassified']}")
+    print(f"Prie sprendimo ribos (p∈[0.4,0.6]): {error_report['fraction_near_boundary_prob_0.4_0.6']:.2f}")
+    print(f"False positives: {error_report['false_positive']['count']}")
+    print(f"False negatives: {error_report['false_negative']['count']}")
+    print(f"CSV: {error_report['csv_path']}")
 
     #OOB
 
