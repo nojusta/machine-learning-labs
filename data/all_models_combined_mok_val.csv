@@ -1,0 +1,7 @@
+﻿Klasifikavimas,Strategija,Accuracy,F1,Precision,Recall
+Decision Tree,Hold-out,0.737,0.736,0.739,0.737
+Decision Tree,5-fold CV,0.831,0.829,0.830,0.833
+Random Forest,Hold-out,0.853,0.853,0.853,0.853
+Random Forest,5-fold CV,0.899,0.899,0.901,0.899
+k-NN,Hold-out,0.823,0.849,0.776,0.938
+k-NN,5-fold CV,0.866,0.874,0.925,0.833

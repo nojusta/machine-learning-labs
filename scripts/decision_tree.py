@@ -13,8 +13,8 @@ from sklearn.model_selection import StratifiedKFold, cross_val_score
 # 1. DUOMENŲ NUSKAITYMAS (ORIGINALŪS POŽYMIAI)
 # ==========================================================
 
-train_val = pd.read_csv("../data/classification_train_val.csv")
-test = pd.read_csv("../data/classification_test.csv")
+train_val = pd.read_csv("./data/classification_train_val.csv")
+test = pd.read_csv("./data/classification_test.csv")
 
 TARGET = "NObeyesdad"
 
@@ -208,7 +208,7 @@ misclassified["y_true"] = y_test.iloc[mis_idx].values
 misclassified["y_pred"] = y_pred_test[mis_idx]
 
 # Išsaugoti CSV
-misclassified.to_csv("../outputs/decision_tree/misclassified_dt.csv", index=False)
+misclassified.to_csv("./outputs/decision_tree/misclassified_dt.csv", index=False)
 
 print(f"Klaidų skaičius: {len(misclassified)}")
 print(misclassified.head())
@@ -232,7 +232,7 @@ summary_table = pd.DataFrame({
     "5 klasė – klaidingai": c5_wrong[original_features].mean(),
 })
 
-summary_table.to_csv("../outputs/decision_tree/error_summary_dt.csv")
+summary_table.to_csv("./outputs/decision_tree/error_summary_dt.csv")
 
 print("\n=== Klaidų vidurkių lentelė ===")
 print(summary_table)
@@ -246,8 +246,8 @@ print("   T-SNE ANALIZĖ")
 print("====================\n")
 
 # 1. Load t-SNE data
-train_val_tsne = pd.read_csv("../data/classification_train_val_tsne.csv")
-test_tsne = pd.read_csv("../data/classification_test_tsne.csv")
+train_val_tsne = pd.read_csv("./data/classification_train_val_tsne.csv")
+test_tsne = pd.read_csv("./data/classification_test_tsne.csv")
 
 X_train_tsne = train_val_tsne.drop(columns=[TARGET])
 y_train_tsne = train_val_tsne[TARGET]
@@ -353,7 +353,7 @@ misclassified_tsne["y_true"] = y_test_tsne.iloc[mis_idx_tsne].values
 misclassified_tsne["y_pred"] = y_pred_tsne_test[mis_idx_tsne]
 
 # Išsaugoti CSV
-misclassified_tsne.to_csv("../outputs/decision_tree/misclassified_dt_tsne.csv", index=False)
+misclassified_tsne.to_csv("./outputs/decision_tree/misclassified_dt_tsne.csv", index=False)
 
 print(f"Klaidų skaičius (t-SNE): {len(misclassified_tsne)}")
 print(misclassified_tsne.head())
@@ -377,7 +377,7 @@ summary_table_tsne = pd.DataFrame({
     "5 klasė – klaidingai": c5_wrong_tsne[tsne_features].mean(),
 })
 
-summary_table_tsne.to_csv("../outputs/decision_tree/error_summary_dt_tsne.csv")
+summary_table_tsne.to_csv("./outputs/decision_tree/error_summary_dt_tsne.csv")
 
 print("\n=== Klaidų vidurkių lentelė (t-SNE) ===")
 print(summary_table_tsne)
@@ -389,7 +389,7 @@ print(summary_table_tsne)
 import os
 import matplotlib.patches as mpatches
 
-output_dir = "../outputs/decision_tree"
+output_dir = "./outputs/decision_tree"
 os.makedirs(output_dir, exist_ok=True)
 
 # Bendra legenda
