@@ -1,21 +1,19 @@
-# Machine Learning Course Project
+# Machine Learning Course Labs
 
-This repository contains lab works for the machine learning course.
+Repository for ML course lab work. Each lab lives on its own branch:
 
-## Working Process
+- **LD1 (financial dataset)**: data cleaning, missing-value handling, normalization, basic descriptive stats to prep the dataset.
+- **LD2 (obesity classification, 2D viz)**: PCA, MDS, t-SNE, UMAP on the obesity dataset; plots and brief comparisons.
+- **LD3 (clustering)**: K-Means, AGNES (hierarchical), DBSCAN experiments with metrics/plots.
+- **LD4 (classification models)**: KNN, Decision Tree, Random Forest on the obesity dataset with validation/test splits, ROC/AUC, confusion matrices, and error analysis.
 
-1. Create a branch based on your name and work you will do: `name/task-X`
-2. Create your lab work files in the respective directory
-3. Commit your changes: `git add . && git commit -m "Complete LD1: [description]"`
-4. Push to remote: `git push origin LD1`
-5. Create a pull request to merge into main or the appropriate lab branch
-6. Use the provided PR template to describe your work
+## How we work
+1) Create a feature branch: `name/ldX-topic`
+2) Add code/notebooks under the appropriate lab folder
+3) Commit: `git add . && git commit -m "LDX: short description"`
+4) Push and open a PR into the matching lab branch
 
-## General Work Guidelines
-
-- Test your code before creating PR
-- Do not commit large datasets or model files (use .gitignore)
-
-## Python Environment
-
-Make sure you have Python 3.x installed. Install required packages as needed for each lab work.
+## Guidelines
+- Test before PR; include plots/results where relevant
+- Keep large raw data/model artifacts out of git (use `.gitignore`)
+- Python 3.x; install lab-specific requirements as needed
